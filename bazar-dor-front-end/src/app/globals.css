@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+Bengali:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Noto Sans Bengali", ui-sans-serif, system-ui, sans-serif;
+  --font-number: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-primary: #064E3B;
+  --color-emerald: #10B981;
+  --color-coral: #F43F5E;
+  --color-bg: #FAFCFC;
+}
+
+@layer base {
+  body {
+    @apply bg-[#FAFCFC] text-slate-800 font-sans antialiased selection:bg-emerald-200 selection:text-[#064E3B];
+  }
+
+  .font-num {
+    font-family: "Inter", sans-serif;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/85 backdrop-blur-[16px] border border-black/[0.04] shadow-[0px_24px_48px_rgba(0,0,0,0.03)] rounded-[24px];
+  }
+
+  .glass-pill {
+    @apply bg-white/85 backdrop-blur-[16px] border border-black/[0.04] shadow-[0px_8px_24px_rgba(0,0,0,0.04)] rounded-full;
+  }
+}
