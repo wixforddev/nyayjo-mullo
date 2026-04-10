@@ -1,4 +1,4 @@
-// File: D:\my-workW\Bazar-dor\src\app\(main)\planner\page.tsx
+// File: D:\my-workW\bazar-dor-main\bazar-dor-front-end\src\app\(main)\planner\page.tsx
 import * as entry from '../../../../../src/app/(main)/planner/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

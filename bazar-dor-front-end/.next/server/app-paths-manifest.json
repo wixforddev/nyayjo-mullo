@@ -1,7 +1,3 @@
 {
-  "/api/prices/route": "app/api/prices/route.js",
-  "/(main)/page": "app/(main)/page.js",
-  "/(main)/heatmap/page": "app/(main)/heatmap/page.js",
-  "/(main)/submit/page": "app/(main)/submit/page.js",
   "/(main)/planner/page": "app/(main)/planner/page.js"
 }

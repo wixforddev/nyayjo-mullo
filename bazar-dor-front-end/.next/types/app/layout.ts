@@ -1,4 +1,4 @@
-// File: D:\my-workW\Bazar-dor\src\app\layout.tsx
+// File: D:\my-workW\bazar-dor-main\bazar-dor-front-end\src\app\layout.tsx
 import * as entry from '../../../src/app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
