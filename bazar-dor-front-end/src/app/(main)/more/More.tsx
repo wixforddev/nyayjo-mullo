@@ -15,7 +15,7 @@ export function More() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto w-full space-y-6 pb-24">
+    <div className="w-full space-y-6 pb-24">
       <div className="text-center mb-8">
         <h1 className="text-hero text-text-primary mb-3">More</h1>
       </div>

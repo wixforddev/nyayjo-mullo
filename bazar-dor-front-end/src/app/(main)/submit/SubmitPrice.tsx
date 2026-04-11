@@ -107,8 +107,11 @@ export function SubmitPrice() {
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        {/* Market & Product Selection + Price — side by side on desktop */}
+        <div className="flex flex-col lg:flex-row gap-6">
+
         {/* Market & Product Selection */}
-        <div className="glass-card p-6 flex flex-col gap-4">
+        <div className="glass-card p-6 flex flex-col gap-4 flex-1">
           <div className="space-y-4">
             <div>
               <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5 mb-1.5">
@@ -149,6 +152,9 @@ export function SubmitPrice() {
             </div>
           </div>
         </div>
+
+        {/* Right column: Price + Verification */}
+        <div className="flex flex-col gap-6 flex-1">
 
         {/* Price Entry */}
         <div className="glass-card p-6 flex flex-col gap-4">
@@ -232,6 +238,9 @@ export function SubmitPrice() {
             </div>
           </div>
         </div>
+
+        </div>{/* end right column */}
+        </div>{/* end desktop flex row */}
 
         {/* Submit Button */}
         <button

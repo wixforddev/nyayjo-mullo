@@ -12,7 +12,7 @@ export function Ranking() {
   ];
 
   return (
-    <div className="max-w-3xl mx-auto w-full space-y-8 pb-24">
+    <div className="w-full space-y-8 pb-24">
       <div className="text-center mb-10">
         <h1 className="text-hero text-text-primary mb-3">Bazaar Ranking Board</h1>
         <p className="text-text-secondary text-lg">বাজারের স্থিতিশীলতা ও সাশ্রয়</p>

@@ -18,8 +18,11 @@ export function Profile() {
         <p className="text-sm text-slate-500">আপনার আর্থিক ও অবদান পোর্টফোলিও</p>
       </div>
 
+      {/* Hero + Budget — side by side on desktop */}
+      <div className="flex flex-col lg:flex-row gap-4">
+
       {/* Hero Savings Bento Card */}
-      <div className="glass-card p-6 md:p-8 relative overflow-hidden">
+      <div className="glass-card p-6 md:p-8 relative overflow-hidden flex-1">
         <div className="flex items-center gap-4 mb-8 relative z-10">
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-100 to-teal-50 flex items-center justify-center text-[#064E3B] text-xl font-bold border-2 border-white shadow-sm overflow-hidden">
             <img src="https://i.pravatar.cc/150?u=ahmed" alt="আহমেদ ফয়সাল" className="w-full h-full object-cover" />
@@ -47,7 +50,7 @@ export function Profile() {
       </div>
 
       {/* Household Budget Tracker Card */}
-      <div className="bg-white rounded-[24px] p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-50 mt-4">
+      <div className="bg-white rounded-[24px] p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-50 lg:mt-0 mt-0 lg:w-80 lg:shrink-0">
         <div className="flex justify-between items-center">
           <h3 className="text-sm font-bold text-emerald-900">📊 মাসিক বাজার বাজেট</h3>
           <button
@@ -77,9 +80,10 @@ export function Profile() {
           )}
         </div>
       </div>
+      </div>{/* end hero+budget flex row */}
 
       {/* Contribution Metrics Grid */}
-      <div className="grid grid-cols-2 gap-4 mt-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
         <div className="glass-card p-5 flex flex-col justify-between">
           <h3 className="text-[14px] text-slate-500 font-semibold text-center mb-4">তথ্য সঠিকতা</h3>
           <div className="relative w-[90px] h-[90px] mx-auto">

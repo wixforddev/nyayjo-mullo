@@ -113,8 +113,11 @@ export function Planner() {
         <FoodRescue />
       ) : (
         <>
+          {/* Desktop: side-by-side, Mobile: stacked */}
+          <div className="flex flex-col lg:flex-row gap-6 items-start">
+
           {/* Basic Info */}
-          <div className="glass-card p-6 flex flex-col gap-4">
+          <div className="glass-card p-6 flex flex-col gap-4 lg:w-72 lg:shrink-0">
         <h2 className="text-lg font-bold text-[#064E3B] mb-2">প্রাথমিক তথ্য</h2>
 
         <div className="space-y-4">
@@ -158,7 +161,7 @@ export function Planner() {
       </div>
 
       {/* Product Selection */}
-      <div className="glass-card p-6 flex flex-col gap-4">
+      <div className="glass-card p-6 flex flex-col gap-4 flex-1 min-w-0">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-bold text-[#064E3B]">পণ্য নির্বাচন করুন</h2>
           <span className="text-xs font-medium text-[#10B981] bg-emerald-50 px-2 py-1 rounded-md font-num">
@@ -177,7 +180,7 @@ export function Planner() {
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {filteredProducts.map(product => {
             const isSelected = !!selectedProducts[product.id];
             const quantity = selectedProducts[product.id] || 0;
@@ -238,6 +241,7 @@ export function Planner() {
           })}
         </div>
       </div>
+          </div>{/* end desktop flex row */}
 
       {/* Floating Action Button */}
       {activeTab === 'planner' && Object.keys(selectedProducts).length > 0 && (

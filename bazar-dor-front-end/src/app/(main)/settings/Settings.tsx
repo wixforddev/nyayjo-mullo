@@ -23,7 +23,11 @@ export function Settings() {
         <div className="w-10 h-10"></div>
       </div>
 
+      {/* Desktop: two-column grid for setting groups */}
+      <div className="lg:grid lg:grid-cols-2 lg:gap-6">
+
       {/* Group 1: ব্যক্তিগত তথ্য */}
+      <div>
       <h2 className="text-xs font-bold text-slate-400 mb-2 px-3 uppercase tracking-wider">ব্যক্তিগত তথ্য</h2>
       <div className="bg-white rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-slate-50 mb-6 overflow-hidden">
         <div onClick={() => setActiveModal('editProfile')} className="flex items-center justify-between p-4 border-b border-slate-50 active:bg-slate-50 transition cursor-pointer">
@@ -42,6 +46,9 @@ export function Settings() {
         </div>
       </div>
 
+      </div>{/* end group 1 */}
+
+      <div>
       {/* Group 2: বাজার ও পছন্দ */}
       <h2 className="text-xs font-bold text-slate-400 mb-2 px-3 uppercase tracking-wider">বাজার ও পছন্দ</h2>
       <div className="bg-white rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-slate-50 mb-6 overflow-hidden">
@@ -65,7 +72,7 @@ export function Settings() {
       </div>
 
       {/* Group 3: নিরাপত্তা */}
-      <h2 className="text-xs font-bold text-slate-400 mb-2 px-3 uppercase tracking-wider">নিরাপত্তা</h2>
+      <h2 className="text-xs font-bold text-slate-400 mb-2 mt-6 lg:mt-0 px-3 uppercase tracking-wider">নিরাপত্তা</h2>
       <div className="bg-white rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-slate-50 mb-6 overflow-hidden">
         <div onClick={() => router.push('/change-password')} className="flex items-center justify-between p-4 border-b border-slate-50 active:bg-slate-50 transition cursor-pointer">
           <div className="flex items-center gap-3">
@@ -82,6 +89,9 @@ export function Settings() {
           <span className="text-rose-300">❯</span>
         </div>
       </div>
+
+      </div>{/* end group 2+3 */}
+      </div>{/* end two-column grid */}
 
       {/* MODALS / BOTTOM SHEETS */}
       {activeModal && (
