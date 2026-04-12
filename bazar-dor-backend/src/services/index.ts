@@ -3,5 +3,9 @@ import * as emailService from './email.service';
 import * as tokenService from './token.service';
 import * as userService from './user.service';
 import * as tasksService from './tasks.service';
+import * as productService from './product.service';
+import * as bazarService from './bazar.service';
+import * as priceService from './price.service';
+import * as alertService from './alert.service';
 
-export { authService, emailService, tokenService, userService, tasksService };
+export { authService, emailService, tokenService, userService, tasksService, productService, bazarService, priceService, alertService };

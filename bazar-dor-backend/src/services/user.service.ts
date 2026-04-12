@@ -17,9 +17,8 @@ const createUser = async (userBody: UserBody) => {
   const oneTimeCode =
     Math.floor(Math.random() * (999999 - 100000 + 1)) + 100000;
 
-  if (userBody.role === "client" || userBody.role === "employee") {
-    sendEmailVerification(userBody.email, oneTimeCode);
-  }
+  sendEmailVerification(userBody.email, oneTimeCode);
+  console.log(`[OTP] Email: ${userBody.email} | OTP Code: ${oneTimeCode}`);
   return UserModel.create({ ...userBody, oneTimeCode });
 };
 
@@ -106,9 +105,8 @@ const isUpdateUser = async (userId: string, updateBody: any) => {
   const oneTimeCode =
     Math.floor(Math.random() * (999999 - 100000 + 1)) + 100000;
 
-  if (updateBody.role === "client" || updateBody.role === "employee") {
-    sendEmailVerification(updateBody.email, oneTimeCode);
-  }
+  sendEmailVerification(updateBody.email, oneTimeCode);
+  console.log(`[OTP] Email: ${updateBody.email} | OTP Code: ${oneTimeCode}`);
 
   Object.assign(user, updateBody, {
     isDeleted: false,

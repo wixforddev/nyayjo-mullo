@@ -4,6 +4,10 @@ import authRoute from './auth.routes';
 import userRoute from './user.routes';
 import docsRoute from './docs.routes';
 import taskRoute from './tasks.routes';
+import productRoute from './product.routes';
+import bazarRoute from './bazar.routes';
+import priceRoute from './price.routes';
+import alertRoute from './alert.routes';
 
 const router = express.Router();
 
@@ -19,6 +23,22 @@ const defaultRoutes: { path: string; route: any }[] = [
   {
     path: '/tasks',
     route: taskRoute,
+  },
+  {
+    path: '/products',
+    route: productRoute,
+  },
+  {
+    path: '/bazars',
+    route: bazarRoute,
+  },
+  {
+    path: '/prices',
+    route: priceRoute,
+  },
+  {
+    path: '/alerts',
+    route: alertRoute,
   },
 ];
 

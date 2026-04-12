@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import httpStatus from "http-status";
 import response from "../config/response";
 import { userService } from "../services";
+import { Price } from "../models";
 import ApiError from "../utils/ApiError";
 import catchAsync from "../utils/catchAsync";
 import pick from "../utils/pick";
@@ -94,4 +95,69 @@ const deleteUser = catchAsync(async (req: Request, res: Response) => {
   );
 });
 
-export { createUser, deleteUser, getUser, getUsers, updateUser };
+const getMyStats = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req as any).user._id;
+
+  const totalSubmissions = await Price.countDocuments({ userId });
+  const verifiedSubmissions = await Price.countDocuments({ userId, isVerified: true });
+  const recentPrices = await Price.find({ userId })
+    .populate('productId', 'name nameBn icon unit')
+    .populate('bazarId', 'name nameBn area')
+    .sort({ createdAt: -1 })
+    .limit(5);
+
+  res.status(httpStatus.OK).json(
+    response({
+      message: "User stats retrieved",
+      status: "OK",
+      statusCode: httpStatus.OK,
+      data: {
+        totalSubmissions,
+        verifiedSubmissions,
+        recentPrices,
+      },
+    }),
+  );
+});
+
+const getLeaderboard = catchAsync(async (req: Request, res: Response) => {
+  const leaderboard = await Price.aggregate([
+    {
+      $group: {
+        _id: '$userId',
+        totalSubmissions: { $sum: 1 },
+        verifiedSubmissions: { $sum: { $cond: ['$isVerified', 1, 0] } },
+      },
+    },
+    { $sort: { verifiedSubmissions: -1, totalSubmissions: -1 } },
+    { $limit: 20 },
+    {
+      $lookup: {
+        from: 'users',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'user',
+      },
+    },
+    { $unwind: '$user' },
+    {
+      $project: {
+        userId: '$_id',
+        name: '$user.name',
+        totalSubmissions: 1,
+        verifiedSubmissions: 1,
+      },
+    },
+  ]);
+
+  res.status(httpStatus.OK).json(
+    response({
+      message: "Leaderboard retrieved",
+      status: "OK",
+      statusCode: httpStatus.OK,
+      data: leaderboard,
+    }),
+  );
+});
+
+export { createUser, deleteUser, getUser, getUsers, updateUser, getMyStats, getLeaderboard };
