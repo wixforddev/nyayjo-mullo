@@ -1,18 +1,11 @@
 import express from 'express';
-import auth from '../../middlewares/auth';
 import * as alertController from '../../controllers/alert.controller';
+import auth from '../../middlewares/auth';
 
 const router = express.Router();
 
-router
-  .route('/')
-  .get(alertController.getAlerts)
-  .post(auth('common'), alertController.createAlert);
-
-router
-  .route('/:alertId')
-  .get(alertController.getAlert)
-  .put(auth('common'), alertController.updateAlert)
-  .delete(auth('admin'), alertController.deleteAlert);
+router.route('/').post(auth("common"), alertController.createAlert);
+router.route('/').get(alertController.getAlerts);
+router.route('/:alertId').get(alertController.getAlert).put(alertController.updateAlert).delete(alertController.deleteAlert);
 
 export default router;

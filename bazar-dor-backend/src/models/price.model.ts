@@ -2,6 +2,11 @@ import mongoose from "mongoose";
 import { paginate } from "./plugins";
 import { PaginateResult } from "./plugins/paginate.plugin";
 
+interface VoterEntry {
+  userId: mongoose.Types.ObjectId;
+  voteType: 'up' | 'down';
+}
+
 interface PriceDocument extends mongoose.Document {
   productId: mongoose.Types.ObjectId;
   bazarId: mongoose.Types.ObjectId;
@@ -11,6 +16,7 @@ interface PriceDocument extends mongoose.Document {
   photoUrl: string;
   upvotes: number;
   downvotes: number;
+  voters: VoterEntry[];
   confidenceScore: number;
   isVerified: boolean;
   isStockOut: boolean;
@@ -60,6 +66,15 @@ const priceSchema = new mongoose.Schema<PriceDocument, PriceModel>(
     downvotes: {
       type: Number,
       default: 0,
+    },
+    voters: {
+      type: [
+        {
+          userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+          voteType: { type: String, enum: ['up', 'down'], required: true },
+        },
+      ],
+      default: [],
     },
     confidenceScore: {
       type: Number,

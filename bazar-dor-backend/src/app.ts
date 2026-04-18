@@ -25,6 +25,9 @@ if (config.env !== 'test') {
 // malter for file upload
 app.use(express.static('public'));
 
+// serve Next.js static export
+app.use(express.static('../bazar-dor-front-end/out'));
+
 // set security HTTP headers
 app.use(helmet());
 

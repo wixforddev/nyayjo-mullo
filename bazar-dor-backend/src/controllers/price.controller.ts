@@ -70,7 +70,8 @@ const votePrice = catchAsync(async (req: Request, res: Response) => {
     ? req.params.priceId[0]
     : req.params.priceId;
   const { voteType } = req.body;
-  const price = await priceService.votePrice(priceId, voteType);
+  const userId = (req as any).user._id;
+  const price = await priceService.votePrice(priceId, voteType, userId);
 
   // Emit socket event if verified
   const io = (req as any).app.get('io');

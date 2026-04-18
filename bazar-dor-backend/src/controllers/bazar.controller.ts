@@ -76,4 +76,18 @@ const deleteBazar = catchAsync(async (req: Request, res: Response) => {
   );
 });
 
-export { createBazar, getBazars, getBazar, updateBazar, deleteBazar };
+const getNearbyBazars = catchAsync(async (req: Request, res: Response) => {
+  const lat  = parseFloat(req.query.lat  as string);
+  const lng  = parseFloat(req.query.lng  as string);
+  const limit = parseInt(req.query.limit as string) || 20;
+  if (isNaN(lat) || isNaN(lng)) {
+    res.status(400).json({ code: 400, message: 'lat and lng are required' });
+    return;
+  }
+  const result = await bazarService.getNearbyBazars(lat, lng, limit);
+  res.status(httpStatus.OK).json(
+    response({ message: 'Nearby bazars', status: 'OK', statusCode: httpStatus.OK, data: result }),
+  );
+});
+
+export { createBazar, getBazars, getBazar, updateBazar, deleteBazar, getNearbyBazars };

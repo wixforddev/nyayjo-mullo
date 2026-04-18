@@ -47,4 +47,23 @@ const deleteBazarById = async (id: string) => {
   return bazar;
 };
 
-export { createBazar, queryBazars, getBazarById, updateBazarById, deleteBazarById };
+// Haversine distance in km
+const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+const getNearbyBazars = async (lat: number, lng: number, limit = 20) => {
+  const bazars = await Bazar.find({ isActive: true });
+  return bazars
+    .map((b: any) => ({ ...b.toJSON(), distance: Math.round(haversineKm(lat, lng, b.lat, b.lng) * 10) / 10 }))
+    .sort((a: any, b: any) => a.distance - b.distance)
+    .slice(0, limit);
+};
+
+export { createBazar, queryBazars, getBazarById, updateBazarById, deleteBazarById, getNearbyBazars };

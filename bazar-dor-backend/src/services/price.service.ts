@@ -56,11 +56,22 @@ const deletePriceById = async (id: string) => {
   return price;
 };
 
-const votePrice = async (priceId: string, voteType: 'up' | 'down') => {
+const votePrice = async (priceId: string, voteType: 'up' | 'down', userId: string) => {
   const price = await Price.findById(priceId);
   if (!price) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Price entry not found');
   }
+
+  // Check if this user already voted on this price
+  const alreadyVoted = price.voters.some(
+    (v: any) => v.userId.toString() === userId.toString()
+  );
+  if (alreadyVoted) {
+    throw new ApiError(httpStatus.CONFLICT, 'আপনি ইতিমধ্যে এই দামে ভোট দিয়েছেন');
+  }
+
+  // Record voter
+  price.voters.push({ userId: userId as any, voteType });
 
   if (voteType === 'up') {
     price.upvotes += 1;

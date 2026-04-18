@@ -15,6 +15,8 @@ interface UserDocument extends mongoose.Document {
   dataOfBirth: string;
   interest: any[];
   address: string;
+  phone: string;
+  location: { lat: number; lng: number } | null;
   oneTimeCode: string;
   isEmailVerified: boolean;
   isResetPassword: boolean;
@@ -96,6 +98,16 @@ const userSchema: any = new mongoose.Schema(
     address: {
       type: String,
       required: false,
+    },
+    phone: {
+      type: String,
+      required: false,
+      default: '',
+    },
+    location: {
+      type: Object,
+      required: false,
+      default: null,
     },
     oneTimeCode: {
       type: String,
