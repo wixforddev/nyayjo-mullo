@@ -1,260 +1,245 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, ShoppingBag, DollarSign, Camera, CheckCircle2, Info } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
-import { PRODUCTS, AREAS } from '@/constants';
+import { MapPin, ShoppingBag, CheckCircle2, Info, Navigation } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useGetProductsQuery } from '../../../store/api/productApi';
+import { useGetBazarsQuery } from '../../../store/api/bazarApi';
+import { useSubmitPriceMutation } from '../../../store/api/priceApi';
+import { useAppSelector } from '../../../store/hooks';
+import { useUserLocation } from '../../../hooks/useUserLocation';
+import { distanceKm, formatDistance } from '../../../lib/distance';
 
 export function SubmitPrice() {
   const searchParams = useSearchParams();
-  const initialProductId = searchParams.get('product_id') || '';
-  const initialBazarId = searchParams.get('bazar_id') || '';
+  const router = useRouter();
+  const isAuthenticated = useAppSelector(s => s.auth.isAuthenticated);
 
-  const [submitted, setSubmitted] = useState(false);
-  const [lastSubmittedVisitType, setLastSubmittedVisitType] = useState('direct');
+  const { data: productsRes, isLoading: loadingProducts } = useGetProductsQuery({ limit: 50 });
+  const { data: bazarsRes, isLoading: loadingBazars } = useGetBazarsQuery({ limit: 50 });
+  const [submitPrice, { isLoading: isSubmitting }] = useSubmitPriceMutation();
+
+  const { location: userLocation, refresh: refreshLocation } = useUserLocation();
+
+  const products = productsRes?.data?.attributes?.data || [];
+  const rawBazars = bazarsRes?.data?.attributes?.data || [];
+
+  // Sort bazars by distance if user location is available
+  const bazars = userLocation
+    ? [...rawBazars].sort((a: any, b: any) =>
+        distanceKm(userLocation.lat, userLocation.lng, a.lat, a.lng) -
+        distanceKm(userLocation.lat, userLocation.lng, b.lat, b.lng)
+      )
+    : rawBazars;
+
   const [formData, setFormData] = useState({
-    bazar_id: initialBazarId,
-    product_id: initialProductId,
+    bazarId: searchParams.get('bazar_id') || '',
+    productId: searchParams.get('product_id') || '',
     price: '',
-    photo_url: '',
-    visit_type: 'direct'
+    visitType: 'physical' as 'physical' | 'online',
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    setFormData(prev => ({
-      ...prev,
-      bazar_id: initialBazarId || prev.bazar_id,
-      product_id: initialProductId || prev.product_id,
-    }));
-  }, [initialProductId, initialBazarId]);
+    if (!formData.bazarId) {
+      const saved = localStorage.getItem('defaultBazarId');
+      if (saved) setFormData(prev => ({ ...prev, bazarId: saved }));
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
+    if (!isAuthenticated) { router.push('/login'); return; }
+    if (!formData.productId || !formData.bazarId || !formData.price) {
+      setError('পণ্য, বাজার ও দাম সিলেক্ট করুন');
+      return;
+    }
+    setError('');
     try {
-      const response = await fetch('/api/prices', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
-          price: parseFloat(formData.price),
-          user_id: 'anonymous'
-        }),
-      });
-
-      if (response.ok) {
-        setSubmitted(true);
-        setLastSubmittedVisitType(formData.visit_type);
-        setFormData({
-          bazar_id: '',
-          product_id: '',
-          price: '',
-          photo_url: '',
-          visit_type: 'direct'
-        });
-        setTimeout(() => setSubmitted(false), 3000);
-      } else {
-        alert('Failed to submit price. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error submitting price:', error);
-      alert('An error occurred. Please try again.');
-    } finally {
-      setIsSubmitting(false);
+      await submitPrice({
+        productId: formData.productId,
+        bazarId: formData.bazarId,
+        price: parseFloat(formData.price),
+        visitType: formData.visitType,
+      }).unwrap();
+      setSubmitted(true);
+    } catch (err: any) {
+      setError(err?.data?.message || 'সাবমিট ব্যর্থ হয়েছে');
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  if (!isAuthenticated) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+        <div className="text-6xl">🔒</div>
+        <h2 className="text-xl font-bold text-slate-800">দাম সাবমিট করতে লগইন করুন</h2>
+        <p className="text-slate-500 text-sm text-center">আপনার কমিউনিটিকে সাহায্য করুন সঠিক দাম শেয়ার করে</p>
+        <div className="flex gap-3">
+          <Link href="/login" className="bg-[#064E3B] text-white px-6 py-3 rounded-xl font-bold">লগইন করুন</Link>
+          <Link href="/register" className="bg-white border border-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold">রেজিস্ট্রেশন</Link>
+        </div>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
-      <div className="max-w-md mx-auto w-full flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
-        <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center text-[#10B981] mb-4 shadow-sm border border-emerald-100">
-          <CheckCircle2 className="w-12 h-12" strokeWidth={2} />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 animate-in zoom-in-95 duration-500">
+        <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center text-4xl border-4 border-emerald-100">✅</div>
+        <h2 className="text-2xl font-bold text-emerald-900">ধন্যবাদ!</h2>
+        <p className="text-slate-500 text-center text-sm max-w-xs">আপনার দাম সফলভাবে সাবমিট হয়েছে। কমিউনিটি যাচাই করার পর এটি প্রকাশিত হবে।</p>
+        <div className="flex gap-3 mt-2">
+          <button onClick={() => { setSubmitted(false); setFormData(prev => ({ ...prev, price: '' })); }}
+            className="bg-[#064E3B] text-white px-6 py-3 rounded-xl font-bold">আবার যোগ করুন</button>
+          <Link href="/" className="bg-white border border-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold">হোমে যান</Link>
         </div>
-        <h2 className="text-3xl font-bold text-[#064E3B]">ধন্যবাদ</h2>
-        <p className="text-lg text-slate-500 max-w-sm">
-          আপনার দেওয়া দাম যাচাইয়ের জন্য পাঠানো হয়েছে।
-        </p>
-        {lastSubmittedVisitType === 'direct' && (
-          <p className="text-sm font-medium text-[#10B981] bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-100">
-            সরাসরি বাজারের তথ্য দ্রুত যাচাই করা হয়।
-          </p>
-        )}
-        <button
-          onClick={() => setSubmitted(false)}
-          className="mt-8 px-8 py-3 bg-[#064E3B] text-white rounded-xl font-bold hover:bg-[#043d2e] transition-colors shadow-lg"
-        >
-          আরেকটি দাম যোগ করুন
-        </button>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6 pb-24">
-      {/* Header */}
-      <div className="glass-card p-6 text-center">
-        <h1 className="text-2xl font-bold text-[#064E3B] mb-2">দাম যোগ করুন</h1>
-        <p className="text-sm text-slate-500">কমিউনিটিকে সঠিক দাম জানতে সাহায্য করুন</p>
+    <div className="max-w-2xl mx-auto pb-12">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-[#064E3B]">দাম যোগ করুন</h1>
+        <p className="text-slate-500 text-sm mt-1">আপনার কমিউনিটিকে সাহায্য করুন সঠিক দাম শেয়ার করে</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-        {/* Market & Product Selection + Price — side by side on desktop */}
-        <div className="flex flex-col lg:flex-row gap-6">
+      {error && (
+        <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-600 font-medium">{error}</div>
+      )}
 
-        {/* Market & Product Selection */}
-        <div className="glass-card p-6 flex flex-col gap-4 flex-1">
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5 mb-1.5">
-                <MapPin className="w-3.5 h-3.5" />
-                বাজার নির্বাচন করুন
-              </label>
-              <select
-                name="bazar_id"
-                value={formData.bazar_id}
-                onChange={handleChange}
-                required
-                className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white/50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#10B981]/30 appearance-none"
-              >
-                <option value="">বাজার নির্বাচন করুন</option>
-                {AREAS.map(area => (
-                  <option key={area.id} value={area.id}>{area.name}</option>
-                ))}
-              </select>
+      <form onSubmit={handleSubmit}>
+        <div className="flex flex-col lg:flex-row gap-4">
+
+          {/* Left: Market + Product */}
+          <div className="flex-1 flex flex-col gap-4">
+            <div className="bg-white rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-50 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-orange-50 rounded-full flex items-center justify-center"><MapPin className="w-4 h-4 text-orange-500" /></div>
+                  <h2 className="font-bold text-slate-800">বাজার নির্বাচন</h2>
+                </div>
+                {userLocation ? (
+                  <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Navigation className="w-3 h-3" /> কাছে থেকে সাজানো
+                  </span>
+                ) : (
+                  <button type="button" onClick={refreshLocation}
+                    className="text-[10px] font-semibold text-blue-500 flex items-center gap-1 hover:text-blue-700">
+                    <Navigation className="w-3 h-3" /> লোকেশন চালু করুন
+                  </button>
+                )}
+              </div>
+              {loadingBazars ? (
+                <div className="h-12 bg-slate-100 rounded-xl animate-pulse"></div>
+              ) : (
+                <>
+                  <select value={formData.bazarId} onChange={(e) => setFormData(p => ({ ...p, bazarId: e.target.value }))} required
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 outline-none focus:border-emerald-500 text-slate-800 font-medium text-sm">
+                    <option value="">বাজার বেছে নিন</option>
+                    {bazars.map((b: any) => {
+                      const dist = userLocation
+                        ? formatDistance(distanceKm(userLocation.lat, userLocation.lng, b.lat, b.lng))
+                        : null;
+                      return (
+                        <option key={b._id} value={b._id}>
+                          {b.nameBn || b.name} — {b.area}{dist ? ` (${dist})` : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  {/* Nearest bazar quick-picks */}
+                  {userLocation && bazars.length > 0 && (
+                    <div className="flex gap-2 mt-3 flex-wrap">
+                      {bazars.slice(0, 3).map((b: any) => {
+                        const dist = distanceKm(userLocation.lat, userLocation.lng, b.lat, b.lng);
+                        const isSelected = formData.bazarId === b._id;
+                        return (
+                          <button key={b._id} type="button"
+                            onClick={() => setFormData(p => ({ ...p, bazarId: b._id }))}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                              isSelected
+                                ? 'bg-[#064E3B] text-white border-[#064E3B]'
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-emerald-300'
+                            }`}>
+                            🏪 {b.nameBn || b.name}
+                            <span className={`${isSelected ? 'text-white/70' : 'text-emerald-600'}`}>
+                              {formatDistance(dist)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
-            <div>
-              <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5 mb-1.5">
-                <ShoppingBag className="w-3.5 h-3.5" />
-                পণ্য নির্বাচন করুন
-              </label>
-              <select
-                name="product_id"
-                value={formData.product_id}
-                onChange={handleChange}
-                required
-                className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white/50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#10B981]/30 appearance-none"
-              >
-                <option value="">পণ্য নির্বাচন করুন</option>
-                {PRODUCTS.map(product => (
-                  <option key={product.id} value={product.id}>{product.name} ({product.unit})</option>
-                ))}
-              </select>
+            <div className="bg-white rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-50 p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center"><ShoppingBag className="w-4 h-4 text-blue-500" /></div>
+                <h2 className="font-bold text-slate-800">পণ্য নির্বাচন</h2>
+              </div>
+              {loadingProducts ? (
+                <div className="h-12 bg-slate-100 rounded-xl animate-pulse"></div>
+              ) : (
+                <select value={formData.productId} onChange={(e) => setFormData(p => ({ ...p, productId: e.target.value }))} required
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 outline-none focus:border-emerald-500 text-slate-800 font-medium text-sm">
+                  <option value="">পণ্য বেছে নিন</option>
+                  {products.map((p: any) => (
+                    <option key={p._id} value={p._id}>{p.icon} {p.nameBn || p.name} ({p.unit})</option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
-        </div>
 
-        {/* Right column: Price + Verification */}
-        <div className="flex flex-col gap-6 flex-1">
-
-        {/* Price Entry */}
-        <div className="glass-card p-6 flex flex-col gap-4">
-          <div>
-            <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5 mb-1.5">
-              <DollarSign className="w-3.5 h-3.5" />
-              বর্তমান দাম (টাকা)
-            </label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-num text-xl font-bold">৳</span>
-              <input
-                type="number"
-                name="price"
-                value={formData.price}
-                onChange={handleChange}
-                required
-                min="1"
-                step="0.01"
-                placeholder="0.00"
-                className="w-full h-16 pl-10 pr-4 rounded-xl border border-slate-200 bg-white/50 text-[#064E3B] font-num text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-[#10B981]/30"
-              />
+          {/* Right: Price + Visit Type */}
+          <div className="flex-1 flex flex-col gap-4">
+            <div className="bg-white rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-50 p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 font-bold text-sm">৳</div>
+                <h2 className="font-bold text-slate-800">দাম লিখুন</h2>
+              </div>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-slate-300">৳</span>
+                <input type="number" value={formData.price} onChange={(e) => setFormData(p => ({ ...p, price: e.target.value }))}
+                  placeholder="০" min="1" required
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-4 outline-none focus:border-emerald-500 text-slate-800 font-bold text-2xl" />
+              </div>
+              <p className="text-xs text-slate-400 mt-2 px-1">প্রতি ইউনিটের দাম লিখুন</p>
             </div>
-          </div>
-        </div>
 
-        {/* Verification Options */}
-        <div className="glass-card p-6 flex flex-col gap-4">
-          <h3 className="text-sm font-bold text-[#064E3B] mb-2">যাচাইকরণের তথ্য</h3>
-
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs font-medium text-slate-500 mb-2 block">
-                আপনি কীভাবে দামটি জেনেছেন?
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <label className={`flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${
-                  formData.visit_type === 'direct'
-                    ? 'border-[#10B981] bg-emerald-50/30 text-[#064E3B]'
-                    : 'border-slate-200 bg-white/50 text-slate-500 hover:border-slate-300'
-                }`}>
-                  <input
-                    type="radio"
-                    name="visit_type"
-                    value="direct"
-                    checked={formData.visit_type === 'direct'}
-                    onChange={handleChange}
-                    className="sr-only"
-                  />
-                  <MapPin className="w-4 h-4" />
-                  <span className="text-sm font-medium">সরাসরি বাজার</span>
-                </label>
-                <label className={`flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${
-                  formData.visit_type === 'online'
-                    ? 'border-[#10B981] bg-emerald-50/30 text-[#064E3B]'
-                    : 'border-slate-200 bg-white/50 text-slate-500 hover:border-slate-300'
-                }`}>
-                  <input
-                    type="radio"
-                    name="visit_type"
-                    value="online"
-                    checked={formData.visit_type === 'online'}
-                    onChange={handleChange}
-                    className="sr-only"
-                  />
-                  <ShoppingBag className="w-4 h-4" />
-                  <span className="text-sm font-medium">অনলাইন/অন্যান্য</span>
-                </label>
+            <div className="bg-white rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-50 p-5">
+              <h2 className="font-bold text-slate-800 mb-3">কোথা থেকে দেখেছেন?</h2>
+              <div className="flex gap-3">
+                {[
+                  { value: 'physical', label: '🏪 সরাসরি বাজার' },
+                  { value: 'online', label: '📱 অনলাইন' },
+                ].map(opt => (
+                  <button key={opt.value} type="button" onClick={() => setFormData(p => ({ ...p, visitType: opt.value as any }))}
+                    className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${formData.visitType === opt.value ? 'bg-[#064E3B] text-white shadow-md' : 'bg-slate-50 text-slate-600 border border-slate-200'}`}>
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5 mb-1.5">
-                <Camera className="w-3.5 h-3.5" />
-                ছবি যোগ করুন (ঐচ্ছিক)
-              </label>
-              <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center text-center bg-white/30 hover:bg-white/50 transition-colors cursor-pointer">
-                <Camera className="w-8 h-8 text-slate-400 mb-2" />
-                <span className="text-sm font-medium text-slate-600">ক্লিক করে ছবি আপলোড করুন</span>
-                <span className="text-xs text-slate-400 mt-1">দোকানের বা পণ্যের ছবি (Max 5MB)</span>
-              </div>
+            <div className="bg-blue-50/50 rounded-[20px] p-4 border border-blue-100/50 flex gap-3">
+              <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-slate-600 font-medium leading-relaxed">আপনার দেওয়া তথ্য কমিউনিটি যাচাই করবে এবং সঠিক হলে পয়েন্ট পাবেন।</p>
             </div>
           </div>
         </div>
 
-        </div>{/* end right column */}
-        </div>{/* end desktop flex row */}
-
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full glass-pill !rounded-2xl bg-gradient-to-r from-[#064E3B] to-[#043d2e] text-white p-4 flex items-center justify-center gap-2 shadow-[0_12px_32px_rgba(6,78,59,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
-        >
+        <button type="submit" disabled={isSubmitting}
+          className="w-full mt-6 bg-gradient-to-r from-[#064E3B] to-[#10B981] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-[0_4px_15px_rgba(16,185,129,0.3)] disabled:opacity-60">
           {isSubmitting ? (
-            <span className="font-medium">পাঠানো হচ্ছে...</span>
+            <span className="animate-pulse">সাবমিট হচ্ছে...</span>
           ) : (
-            <>
-              <CheckCircle2 className="w-5 h-5" />
-              <span className="font-medium text-lg">দাম নিশ্চিত করুন</span>
-            </>
+            <><CheckCircle2 className="w-5 h-5" /> দাম সাবমিট করুন</>
           )}
         </button>
       </form>

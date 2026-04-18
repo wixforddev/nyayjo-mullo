@@ -3,9 +3,13 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Calendar, PlusCircle, User, Activity, Home, Map, Info } from 'lucide-react';
+import { Calendar, PlusCircle, User, Activity, Home, Map, Info, Bell, ShieldCheck, LogIn, LogOut } from 'lucide-react';
+import { useAppDispatch } from '../store/hooks';
+import { logout } from '../store/slices/authSlice';
+import { useRouter } from 'next/navigation';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { useAppSelector } from '../store/hooks';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -14,14 +18,23 @@ export function cn(...inputs: ClassValue[]) {
 export function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const user = useAppSelector((s) => s.auth.user);
+  const isAdmin = user?.role === 'admin';
+  const dispatch = useAppDispatch();
+  const router = useRouter();
 
   const navItems = [
-    { icon: Home,       label: 'হোম',      path: '/' },
-    { icon: Map,        label: 'ম্যাপ',     path: '/heatmap' },
-    { icon: PlusCircle, label: 'যোগ করুন', path: '/submit', primary: true },
-    { icon: Calendar,   label: 'প্ল্যানার', path: '/planner' },
-    { icon: User,       label: 'প্রোফাইল', path: '/profile' },
+    { icon: Home,       label: 'হোম',       path: '/' },
+    { icon: Map,        label: 'মানচিত্র',  path: '/heatmap' },
+    { icon: PlusCircle, label: 'দাম যোগ করুন', path: '/submit', primary: true },
+    { icon: Calendar,   label: 'প্ল্যানার',  path: '/planner' },
+    { icon: Bell,       label: 'এলার্ট',    path: '/alerts' },
+    { icon: User,       label: 'প্রোফাইল',  path: '/profile' },
   ];
+
+  // Active check: exact match for home, prefix match for all others
+  const isActivePath = (path: string) =>
+    path === '/' ? pathname === '/' : pathname === path || pathname.startsWith(path + '/');
 
   return (
     <div className="min-h-screen bg-[#FAFCFC] font-sans relative">
@@ -71,7 +84,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {/* Nav items */}
           <nav className="flex-1 py-4 flex flex-col gap-1 md:px-1.5 lg:px-3">
             {navItems.map((item) => {
-              const isActive = pathname === item.path;
+              const isActive = isActivePath(item.path);
               const Icon     = item.icon;
 
               /* ── Primary (Add price) button ── */
@@ -82,9 +95,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     href={item.path}
                     title={item.label}
                     className={cn(
-                      'flex items-center gap-3 font-bold transition-all my-1',
-                      'bg-gradient-to-r from-[#064E3B] to-[#10B981] text-white',
-                      'shadow-md shadow-emerald-900/15 hover:shadow-lg hover:shadow-emerald-900/25 active:scale-95',
+                      'flex items-center gap-3 font-bold transition-all my-1 active:scale-95',
+                      'bg-gradient-to-r from-[#064E3B] to-[#10B981] text-white shadow-md shadow-emerald-900/20 hover:shadow-lg hover:shadow-emerald-900/30',
+                      isActive && 'ring-2 ring-offset-2 ring-[#10B981]',
                       // tablet: small pill centered
                       'md:justify-center md:mx-auto md:w-10 md:h-10 md:rounded-full md:p-0',
                       // laptop+: full-width row
@@ -104,16 +117,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   href={item.path}
                   title={item.label}
                   className={cn(
-                    'flex items-center gap-3 rounded-2xl transition-all duration-200',
+                    'flex items-center gap-3 rounded-2xl transition-all duration-200 active:scale-95',
                     'md:justify-center md:py-3 md:px-0',
                     'lg:justify-start lg:px-4 lg:py-3',
                     isActive
-                      ? 'bg-emerald-50 text-[#064E3B] font-bold'
-                      : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50/80 font-medium',
+                      ? 'border-2 border-[#10B981] text-[#064E3B] font-bold'
+                      : 'border-2 border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-50/80 font-medium',
                   )}
                 >
                   <Icon
-                    className={cn('w-5 h-5 shrink-0', isActive && 'text-[#064E3B]')}
+                    className="w-5 h-5 shrink-0"
                     strokeWidth={isActive ? 2 : 1.5}
                   />
                   <span className="hidden lg:block text-sm">{item.label}</span>
@@ -121,6 +134,58 @@ export function Layout({ children }: { children: React.ReactNode }) {
               );
             })}
           </nav>
+
+          {/* Admin Panel link (admin only) */}
+          {isAdmin && (
+            <div className="shrink-0 md:px-1.5 lg:px-3 pb-2">
+              <Link
+                href="/admin"
+                title="অ্যাডমিন প্যানেল"
+                className={cn(
+                  'w-full flex items-center gap-3 rounded-2xl transition-all',
+                  'text-violet-600 hover:bg-violet-50',
+                  'md:justify-center md:py-3 md:px-0',
+                  'lg:justify-start lg:px-4 lg:py-3',
+                )}
+              >
+                <ShieldCheck className="w-5 h-5 shrink-0" strokeWidth={1.5} />
+                <span className="hidden lg:block text-sm font-semibold">অ্যাডমিন প্যানেল</span>
+              </Link>
+            </div>
+          )}
+
+          {/* Login / Logout in sidebar */}
+          <div className="shrink-0 md:px-1.5 lg:px-3 pb-2">
+            {user ? (
+              <button
+                onClick={() => { dispatch(logout()); router.push('/'); }}
+                title="লগ আউট"
+                className={cn(
+                  'w-full flex items-center gap-3 rounded-2xl transition-all',
+                  'text-red-400 hover:text-red-600 hover:bg-red-50/60',
+                  'md:justify-center md:py-3 md:px-0',
+                  'lg:justify-start lg:px-4 lg:py-3',
+                )}
+              >
+                <LogOut className="w-5 h-5 shrink-0" strokeWidth={1.5} />
+                <span className="hidden lg:block text-sm font-medium">লগ আউট</span>
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                title="লগইন"
+                className={cn(
+                  'w-full flex items-center gap-3 rounded-2xl transition-all',
+                  'text-[#064E3B] hover:bg-emerald-50',
+                  'md:justify-center md:py-3 md:px-0',
+                  'lg:justify-start lg:px-4 lg:py-3',
+                )}
+              >
+                <LogIn className="w-5 h-5 shrink-0" strokeWidth={1.5} />
+                <span className="hidden lg:block text-sm font-semibold">লগইন করুন</span>
+              </Link>
+            )}
+          </div>
 
           {/* Info / About */}
           <div className="shrink-0 md:px-1.5 lg:px-3 pb-6">
@@ -157,13 +222,43 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
             {/* Spacer on tablet+ */}
             <div className="hidden md:block" />
-            {/* Info button — always visible */}
-            <button
-              onClick={() => setShowDisclaimer(true)}
-              className="w-10 h-10 rounded-full glass-pill flex items-center justify-center text-slate-500 hover:text-[#064E3B] transition-colors active:scale-95"
-            >
-              <Info className="w-5 h-5" strokeWidth={1.5} />
-            </button>
+            {/* Right actions */}
+            <div className="flex items-center gap-2">
+              {/* Info button */}
+              <button
+                onClick={() => setShowDisclaimer(true)}
+                className="w-10 h-10 rounded-full glass-pill flex items-center justify-center text-slate-500 hover:text-[#064E3B] transition-colors active:scale-95"
+              >
+                <Info className="w-5 h-5" strokeWidth={1.5} />
+              </button>
+
+              {/* Login / User button */}
+              {user ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full glass-pill">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#064E3B] to-[#10B981] flex items-center justify-center text-white text-xs font-bold shrink-0">
+                      {user.fullName?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                    <span className="text-xs font-semibold text-slate-700 hidden sm:block max-w-[80px] truncate">{user.fullName}</span>
+                  </div>
+                  <button
+                    onClick={() => { dispatch(logout()); router.push('/'); }}
+                    title="লগ আউট"
+                    className="w-10 h-10 rounded-full glass-pill flex items-center justify-center text-slate-500 hover:text-red-500 transition-colors active:scale-95"
+                  >
+                    <LogOut className="w-4 h-4" strokeWidth={1.5} />
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#064E3B] to-[#10B981] text-white text-sm font-bold shadow-md shadow-emerald-900/15 hover:shadow-lg hover:shadow-emerald-900/25 active:scale-95 transition-all"
+                >
+                  <LogIn className="w-4 h-4" strokeWidth={2} />
+                  <span>লগইন</span>
+                </Link>
+              )}
+            </div>
           </header>
 
           {/* Page content */}
@@ -181,7 +276,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <div className="md:hidden fixed bottom-4 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
         <nav className="glass-pill px-2 py-2 flex items-center gap-1 pointer-events-auto max-w-sm w-full justify-between">
           {navItems.map((item) => {
-            const isActive = pathname === item.path;
+            const isActive = isActivePath(item.path);
             const Icon     = item.icon;
 
             if (item.primary) {
@@ -189,7 +284,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.path}
                   href={item.path}
-                  className="relative -top-5 w-14 h-14 rounded-full bg-gradient-to-br from-[#064E3B] to-[#10B981] flex items-center justify-center text-white shadow-[0_8px_32px_rgba(16,185,129,0.4)] hover:scale-105 active:scale-95 transition-transform"
+                  className={cn(
+                    'relative -top-5 w-14 h-14 rounded-full flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-all',
+                    'bg-gradient-to-br from-[#064E3B] to-[#10B981] shadow-[0_8px_32px_rgba(16,185,129,0.4)]',
+                    isActive && 'ring-4 ring-offset-2 ring-[#10B981]',
+                  )}
                 >
                   <Icon className="w-6 h-6" strokeWidth={2} />
                 </Link>
@@ -201,14 +300,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 key={item.path}
                 href={item.path}
                 className={cn(
-                  'flex flex-col items-center justify-center w-14 h-12 rounded-2xl transition-all duration-200',
+                  'flex flex-col items-center justify-center w-14 h-12 rounded-2xl transition-all duration-200 active:scale-95',
                   isActive
-                    ? 'text-[#064E3B] bg-emerald-50/60'
-                    : 'text-slate-400 hover:text-slate-600',
+                    ? 'border-2 border-[#10B981] text-[#064E3B]'
+                    : 'border-2 border-transparent text-slate-400 hover:text-slate-600',
                 )}
               >
                 <Icon
-                  className={cn('w-5 h-5 mb-0.5 transition-transform duration-200', isActive && 'scale-110')}
+                  className="w-5 h-5 mb-0.5 transition-transform duration-200"
                   strokeWidth={isActive ? 2 : 1.5}
                 />
                 <span className="text-[10px] font-medium tracking-wide">{item.label}</span>

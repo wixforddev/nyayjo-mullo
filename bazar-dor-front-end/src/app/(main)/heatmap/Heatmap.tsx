@@ -1,109 +1,292 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Navigation } from 'lucide-react';
+import { Navigation, MapPin, Search } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { useGetBazarsQuery } from '../../../store/api/bazarApi';
+import { useGetHeatmapQuery } from '../../../store/api/priceApi';
+import { useGetProductsQuery } from '../../../store/api/productApi';
+import { useUserLocation } from '../../../hooks/useUserLocation';
+import { distanceKm, formatDistance, googleMapsDirectionsUrl } from '../../../lib/distance';
+
+const HeatmapMap = dynamic(() => import('../../../components/HeatmapMap'), { ssr: false });
+
+type Tier = 'emerald' | 'amber' | 'rose' | 'slate';
+
+const TIER_COLOR: Record<Tier, { ring: string; text: string; bg: string; label: string }> = {
+  emerald: { ring: 'ring-emerald-300', text: 'text-emerald-700', bg: 'bg-emerald-50',  label: 'সস্তা'    },
+  amber:   { ring: 'ring-amber-300',   text: 'text-amber-700',   bg: 'bg-amber-50',    label: 'মাঝারি'  },
+  rose:    { ring: 'ring-rose-300',    text: 'text-rose-700',    bg: 'bg-rose-50',     label: 'দামি'     },
+  slate:   { ring: 'ring-slate-200',   text: 'text-slate-400',   bg: 'bg-slate-50',    label: 'ডেটা নেই' },
+};
+
+const DOT_COLOR: Record<Tier, string> = {
+  emerald: 'bg-emerald-500',
+  amber:   'bg-amber-500',
+  rose:    'bg-rose-500',
+  slate:   'bg-slate-400',
+};
 
 export function Heatmap() {
-  const [activeMarker, setActiveMarker] = useState<number | null>(1);
+  const [selectedBazarId, setSelectedBazarId] = useState<string>('');
+  const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const markets = [
-    { id: 1, name: 'কারওয়ান বাজার', distance: '০.৮ কিমি দূরে', crowd: '🟢 স্বাভাবিক ভিড়', price: '৳১২০', color: 'emerald', top: '40%', left: '45%' },
-    { id: 3, name: 'মিরপুর ১', distance: '১.২ কিমি দূরে', crowd: '🟡 ভিড় বেশি', price: '৳১৩৫', color: 'amber', top: '25%', left: '60%' },
-    { id: 2, name: 'গুলশান ডিএনসিসি', distance: '৩.৫ কিমি দূরে', crowd: '', price: '৳১৫০', color: 'rose', top: '60%', left: '75%' },
-  ];
+  const { location: userLocation, refresh: refreshLocation, loading: locLoading } = useUserLocation();
 
-  const colorMap: Record<string, { bg: string; shadow: string; border: string; text: string }> = {
-    emerald: { bg: 'bg-emerald-500', shadow: 'shadow-[0_4px_12px_rgba(16,185,129,0.4)]', border: 'border-emerald-300 bg-emerald-50/30', text: 'text-emerald-500' },
-    amber: { bg: 'bg-amber-500', shadow: 'shadow-md', border: 'border-amber-300 bg-amber-50/30', text: 'text-amber-500' },
-    rose: { bg: 'bg-rose-500', shadow: 'shadow-md', border: 'border-rose-300 bg-rose-50/30', text: 'text-rose-500' },
+  const { data: bazarsRes,   isLoading: loadingBazars }   = useGetBazarsQuery({ limit: 100 });
+  const { data: productsRes }                              = useGetProductsQuery({ limit: 50 });
+  const { data: heatmapRes, isFetching: fetchingHeatmap } = useGetHeatmapQuery(
+    selectedProductId,
+    { skip: !selectedProductId }
+  );
+
+  const rawBazars: any[] = bazarsRes?.data?.attributes?.data   || [];
+  const products: any[]  = productsRes?.data?.attributes?.data || [];
+  const heatmapData: any[] = heatmapRes?.data?.attributes      || [];
+
+  // ─── Helpers ────────────────────────────────────────────────
+  const getBazarHeatRow = (bazarId: string) =>
+    heatmapData.find((h: any) =>
+      (typeof h.bazarId === 'string' ? h.bazarId : h.bazarId?._id) === bazarId
+    );
+
+  const getTier = (bazarId: string): Tier => {
+    const row = getBazarHeatRow(bazarId);
+    if (!row) return 'slate';
+    const prices = heatmapData.map((h: any) => h.avgPrice).filter(Boolean);
+    if (!prices.length) return 'slate';
+    const ratio = (row.avgPrice - Math.min(...prices)) / (Math.max(...prices) - Math.min(...prices) || 1);
+    if (ratio < 0.4) return 'emerald';
+    if (ratio < 0.7) return 'amber';
+    return 'rose';
   };
 
+  const getAvgPrice = (bazarId: string): number | null => {
+    const row = getBazarHeatRow(bazarId);
+    return row ? Math.round(row.avgPrice) : null;
+  };
+
+  // ─── Sort & filter ──────────────────────────────────────────
+  // Sort by: 1) price tier (cheap → expensive → no data) 2) distance
+  const sortedBazars = [...rawBazars].sort((a: any, b: any) => {
+    const pa = getBazarHeatRow(a._id)?.avgPrice ?? 999999;
+    const pb = getBazarHeatRow(b._id)?.avgPrice ?? 999999;
+    if (pa !== pb) return pa - pb;
+    if (userLocation) {
+      return distanceKm(userLocation.lat, userLocation.lng, a.lat, a.lng) -
+             distanceKm(userLocation.lat, userLocation.lng, b.lat, b.lng);
+    }
+    return 0;
+  });
+
+  const filteredBazars = searchQuery
+    ? sortedBazars.filter((b: any) =>
+        b.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        b.nameBn?.includes(searchQuery) ||
+        b.area?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : sortedBazars;
+
+  const selectedBazar = rawBazars.find((b: any) => b._id === selectedBazarId);
+
   return (
-    <div className="flex flex-col lg:flex-row gap-0 lg:gap-6 h-[calc(100vh-88px)]">
+    <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-96px)] min-h-[600px]">
 
-      {/* ── Map Area ── */}
-      <div className="relative flex-1 min-h-[55vw] lg:min-h-0 overflow-hidden bg-[#f8f9fa] rounded-2xl">
-        {/* Minimal SVG Map Background */}
-        <div className="absolute inset-0 z-0">
-          <svg className="w-full h-full opacity-40" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <path d="M 0 0 L 100 0 L 100 100 L 0 100 Z" fill="#e2e8f0" />
-            <path d="M 20 0 Q 30 50 10 100 L 0 100 L 0 0 Z" fill="#e0f2fe" />
-            <path d="M 80 0 Q 60 40 90 100 L 100 100 L 100 0 Z" fill="#e0f2fe" />
-            <path d="M 0 30 Q 50 40 100 20" fill="none" stroke="#ffffff" strokeWidth="1.5" />
-            <path d="M 40 0 Q 50 50 30 100" fill="none" stroke="#ffffff" strokeWidth="1.5" />
-            <path d="M 70 0 Q 60 60 80 100" fill="none" stroke="#ffffff" strokeWidth="1" />
-          </svg>
+      {/* ── Left: Map ───────────────────────────────────────── */}
+      <div className="relative flex-1 min-h-[50vw] lg:min-h-0 rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-slate-100">
+
+        {/* Product filter (floating) */}
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[400] flex items-center gap-2
+                        bg-white/95 backdrop-blur-md rounded-2xl px-4 py-2.5 shadow-lg border border-white/60 min-w-[260px]">
+          <span className="text-sm text-slate-400 font-medium shrink-0">পণ্য:</span>
+          <select
+            value={selectedProductId}
+            onChange={e => setSelectedProductId(e.target.value)}
+            className="flex-1 bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"
+          >
+            <option value="">সব বাজার দেখুন</option>
+            {products.map((p: any) => (
+              <option key={p._id} value={p._id}>{p.icon} {p.nameBn || p.name}</option>
+            ))}
+          </select>
+          {fetchingHeatmap && <div className="w-3.5 h-3.5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin shrink-0" />}
         </div>
 
-        {/* Map Markers */}
-        {markets.map((market) => {
-          const c = colorMap[market.color];
-          return (
-            <div
-              key={market.id}
-              className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center cursor-pointer z-20"
-              style={{ top: market.top, left: market.left }}
-              onClick={() => setActiveMarker(market.id)}
-            >
-              {activeMarker === market.id && (
-                <div className="absolute bottom-full mb-3 w-48 bg-white/80 backdrop-blur-md rounded-2xl p-3 shadow-lg border border-white/40 flex items-center justify-between animate-in fade-in slide-in-from-bottom-2">
-                  <div>
-                    <h4 className="font-bold text-slate-800 text-sm">📍 {market.name}</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">{market.distance}</p>
-                  </div>
-                  <button className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors">
-                    <Navigation className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-              <div className={`${c.bg} text-white rounded-full px-3 py-1.5 font-bold text-sm ${c.shadow} font-num ${market.id === 1 ? 'animate-pulse' : ''}`}>
-                {market.price}
-              </div>
-              <div className={`w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] ${market.id === 1 ? 'border-t-emerald-500' : market.id === 3 ? 'border-t-amber-500' : 'border-t-rose-500'}`}></div>
+        {/* Location button (floating, bottom-left) */}
+        <button
+          onClick={refreshLocation}
+          disabled={locLoading}
+          className="absolute bottom-4 left-4 z-[400] flex items-center gap-2 bg-white/95 backdrop-blur-md
+                     px-3.5 py-2.5 rounded-xl shadow-lg border border-white/60 text-sm font-semibold
+                     text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-60"
+        >
+          <Navigation className={`w-4 h-4 ${locLoading ? 'animate-pulse' : ''}`} />
+          {userLocation ? 'অবস্থান আপডেট' : 'আমার অবস্থান'}
+        </button>
+
+        {/* Legend (floating, bottom-right) */}
+        <div className="absolute bottom-4 right-4 z-[400] bg-white/95 backdrop-blur-md rounded-xl
+                        px-3 py-2 shadow-lg border border-white/60 flex gap-3">
+          {(['emerald', 'amber', 'rose'] as Tier[]).map(t => (
+            <div key={t} className="flex items-center gap-1.5">
+              <div className={`w-2.5 h-2.5 rounded-full ${DOT_COLOR[t]}`} />
+              <span className="text-[11px] font-semibold text-slate-500">{TIER_COLOR[t].label}</span>
             </div>
-          );
-        })}
-
-        {/* Top floating header */}
-        <div className="absolute top-4 left-0 right-0 z-20 flex flex-col items-center pointer-events-none">
-          <div className="bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full shadow-sm border border-white/40 pointer-events-auto">
-            <p className="text-xs font-medium text-slate-600">📍 আপনার লোকেশন: মিরপুর</p>
-          </div>
-          <button className="mt-2 bg-white px-5 py-2.5 rounded-full shadow-md border border-slate-100 flex items-center gap-2 pointer-events-auto active:scale-95 transition-transform">
-            <span className="text-sm font-bold text-slate-900">🧅 পেঁয়াজ (দেশি)</span>
-            <span className="text-slate-400 text-xs">▾</span>
-          </button>
+          ))}
         </div>
+
+        {/* Loading skeleton */}
+        {loadingBazars && (
+          <div className="absolute inset-0 z-[300] flex items-center justify-center bg-slate-100 animate-pulse rounded-2xl">
+            <div className="text-center text-slate-400">
+              <div className="text-4xl mb-2">🗺️</div>
+              <p className="text-sm font-medium">বাজার লোড হচ্ছে...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Real Leaflet Map */}
+        <HeatmapMap
+          bazars={rawBazars}
+          heatmapData={heatmapData}
+          userLocation={userLocation}
+          selectedBazarId={selectedBazarId}
+          onBazarSelect={(b: any) => setSelectedBazarId(b._id === selectedBazarId ? '' : b._id)}
+          height="100%"
+        />
       </div>
 
-      {/* ── Rankings Panel ── */}
-      {/* Mobile: bottom sheet style | Desktop: right sidebar */}
-      <div className="lg:w-80 xl:w-96 shrink-0 bg-white/95 backdrop-blur-xl rounded-t-[32px] lg:rounded-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.08)] lg:shadow-sm p-6 overflow-y-auto">
-        <h2 className="text-lg font-black text-slate-800 mb-5">🏆 আজকের সস্তা বাজার</h2>
-        <div className="flex flex-col gap-4">
-          {markets.map((market, i) => {
-            const c = colorMap[market.color];
+      {/* ── Right: Rankings panel ────────────────────────────── */}
+      <div className="lg:w-80 xl:w-96 flex-shrink-0 flex flex-col bg-white/80 backdrop-blur-xl
+                      rounded-2xl shadow-sm border border-slate-100/80 overflow-hidden">
+
+        {/* Panel header */}
+        <div className="p-4 border-b border-slate-100 shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="font-bold text-slate-800">বাজার র‍্যাংকিং</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {selectedProductId
+                  ? `${products.find((p: any) => p._id === selectedProductId)?.nameBn || 'পণ্য'} অনুযায়ী`
+                  : 'পণ্য বেছে নিলে দাম দেখাবে'
+                }
+              </p>
+            </div>
+            {userLocation && (
+              <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full flex items-center gap-1">
+                <Navigation className="w-3 h-3" /> লোকেশন সক্রিয়
+              </span>
+            )}
+          </div>
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+            <input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="বাজার খুঁজুন..."
+              className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-emerald-400 transition-colors"
+            />
+          </div>
+        </div>
+
+        {/* Bazar list */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+          {filteredBazars.length === 0 && (
+            <p className="text-center text-slate-400 text-sm py-10">কোনো বাজার পাওয়া যায়নি</p>
+          )}
+          {filteredBazars.map((bazar: any, i: number) => {
+            const tier      = getTier(bazar._id);
+            const price     = getAvgPrice(bazar._id);
+            const c         = TIER_COLOR[tier];
+            const isSelected = bazar._id === selectedBazarId;
+            const dist      = userLocation && bazar.lat && bazar.lng
+              ? distanceKm(userLocation.lat, userLocation.lng, bazar.lat, bazar.lng)
+              : null;
+
             return (
-              <div
-                key={market.id}
-                className={`bg-white rounded-2xl p-4 shadow-sm border cursor-pointer transition-colors ${activeMarker === market.id ? c.border : 'border-slate-100'}`}
-                onClick={() => setActiveMarker(market.id)}
+              <button
+                key={bazar._id}
+                onClick={() => setSelectedBazarId(bazar._id === selectedBazarId ? '' : bazar._id)}
+                className={`w-full flex items-center gap-3 p-3 rounded-2xl border transition-all text-left ${
+                  isSelected
+                    ? `${c.bg} ${c.ring} ring-2 shadow-sm`
+                    : 'border-transparent hover:bg-slate-50 hover:border-slate-100'
+                }`}
               >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-base">{i + 1}. {market.name}</h3>
-                    <p className="text-xs text-slate-500 mt-0.5 font-medium">{market.distance}{market.crowd ? ` • ${market.crowd}` : ''}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className={`text-xl font-black tracking-tight font-num ${c.text}`}>
-                      {market.price}<span className="text-sm font-medium text-slate-400">/কেজি</span>
-                    </span>
+                {/* Rank */}
+                <span className="text-sm font-black text-slate-300 w-5 text-center shrink-0">{i + 1}</span>
+
+                {/* Colored dot */}
+                <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${DOT_COLOR[tier]}`} />
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <p className={`font-bold text-sm truncate ${isSelected ? c.text : 'text-slate-700'}`}>
+                    {bazar.nameBn || bazar.name}
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[11px] text-slate-400 truncate">{bazar.area}</span>
+                    {dist !== null && (
+                      <span className="text-[11px] font-semibold text-emerald-600 shrink-0">
+                        {formatDistance(dist)}
+                      </span>
+                    )}
                   </div>
                 </div>
-              </div>
+
+                {/* Price + route */}
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  {price !== null ? (
+                    <span className={`font-black text-sm ${c.text}`}>৳{price}</span>
+                  ) : (
+                    <span className="text-xs text-slate-300">—</span>
+                  )}
+                  {userLocation && bazar.lat && bazar.lng && (
+                    <a
+                      href={googleMapsDirectionsUrl(userLocation.lat, userLocation.lng, bazar.lat, bazar.lng)}
+                      target="_blank" rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="text-[10px] font-semibold text-blue-500 hover:text-blue-700"
+                    >
+                      🗺️ রুট
+                    </a>
+                  )}
+                </div>
+              </button>
             );
           })}
         </div>
+
+        {/* Selected bazar detail strip */}
+        {selectedBazar && (
+          <div className="p-4 border-t border-slate-100 shrink-0 bg-slate-50/60">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start gap-2">
+                <MapPin className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-bold text-slate-800 text-sm">{selectedBazar.nameBn || selectedBazar.name}</p>
+                  <p className="text-xs text-slate-400">{selectedBazar.area}</p>
+                  {getAvgPrice(selectedBazar._id) && (
+                    <p className={`text-sm font-black mt-1 ${TIER_COLOR[getTier(selectedBazar._id)].text}`}>
+                      গড় দাম: ৳{getAvgPrice(selectedBazar._id)}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {userLocation && selectedBazar.lat && selectedBazar.lng && (
+                <a
+                  href={googleMapsDirectionsUrl(userLocation.lat, userLocation.lng, selectedBazar.lat, selectedBazar.lng)}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 bg-[#064E3B] text-white text-xs font-bold px-3 py-2 rounded-xl hover:bg-[#043d2e] transition-colors shrink-0"
+                >
+                  🗺️ রুট দেখুন
+                </a>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

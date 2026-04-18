@@ -11,20 +11,35 @@
       "static/chunks/main-app.js",
       "static/chunks/app/(main)/page.js"
     ],
-    "/(main)/planner/page": [
+    "/login/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/(main)/planner/page.js"
+      "static/chunks/app/login/page.js"
+    ],
+    "/(main)/heatmap/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/(main)/heatmap/page.js"
+    ],
+    "/(main)/alerts/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/(main)/alerts/page.js"
     ],
     "/(main)/profile/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/(main)/profile/page.js"
     ],
-    "/(main)/heatmap/page": [
+    "/(main)/submit/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/(main)/heatmap/page.js"
+      "static/chunks/app/(main)/submit/page.js"
+    ],
+    "/(main)/planner/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/(main)/planner/page.js"
     ]
   }
 }
