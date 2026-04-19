@@ -4,6 +4,20 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { distanceKm, formatDistance, googleMapsDirectionsUrl } from '../lib/distance';
 
+async function fetchOsrmRoute(
+  from: { lat: number; lng: number },
+  to:   { lat: number; lng: number },
+): Promise<L.LatLng[] | null> {
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`;
+    const res  = await fetch(url);
+    const json = await res.json();
+    if (json.code !== 'Ok' || !json.routes?.[0]) return null;
+    const coords: [number, number][] = json.routes[0].geometry.coordinates;
+    return coords.map(([lng, lat]) => L.latLng(lat, lng));
+  } catch { return null; }
+}
+
 export interface HeatmapBazar {
   _id: string;
   name: string;
@@ -122,10 +136,11 @@ interface Props {
 export default function HeatmapMapInner({
   bazars, heatmapData, userLocation, selectedBazarId, onBazarSelect, height = '100%',
 }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef       = useRef<L.Map | null>(null);
-  const markersRef   = useRef<Record<string, L.Marker>>({});
+  const containerRef  = useRef<HTMLDivElement>(null);
+  const mapRef        = useRef<L.Map | null>(null);
+  const markersRef    = useRef<Record<string, L.Marker>>({});
   const userMarkerRef = useRef<L.Marker | null>(null);
+  const routeLineRef  = useRef<L.Polyline | null>(null);
 
   // Init map once
   useEffect(() => {
@@ -141,7 +156,11 @@ export default function HeatmapMapInner({
     }).addTo(map);
 
     mapRef.current = map;
-    return () => { map.remove(); mapRef.current = null; };
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      delete (window as any).__showMapRoute;
+    };
   }, []);
 
   // User location marker
@@ -193,12 +212,20 @@ export default function HeatmapMapInner({
             : `<div style="font-size:12px;color:#94A3B8;margin-bottom:8px">দাম নেই</div>`
           }
           ${dist ? `<div style="font-size:12px;font-weight:700;color:#10B981;margin-bottom:8px">📍 ${dist} দূরে</div>` : ''}
-          <a href="${dirUrl}" target="_blank" rel="noopener"
-            style="display:inline-flex;align-items:center;gap:4px;background:#064E3B;color:white;
-                   padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;
-                   text-decoration:none;width:100%;justify-content:center;box-sizing:border-box">
-            🗺️ রুট দেখুন
-          </a>
+          <div style="display:flex;gap:6px">
+            <a href="${dirUrl}" target="_blank" rel="noopener"
+              style="flex:1;display:inline-flex;align-items:center;gap:4px;background:#064E3B;color:white;
+                     padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700;
+                     text-decoration:none;justify-content:center;box-sizing:border-box">
+              🗺️ Google Maps
+            </a>
+            ${userLocation ? `<button onclick="window.__showMapRoute && window.__showMapRoute('${bazar._id}')"
+              style="flex:1;display:inline-flex;align-items:center;gap:4px;background:#10B981;color:white;
+                     padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700;
+                     border:none;cursor:pointer;justify-content:center;box-sizing:border-box">
+              📍 ম্যাপে রুট
+            </button>` : ''}
+          </div>
         </div>
       `));
 
@@ -206,6 +233,12 @@ export default function HeatmapMapInner({
       marker.addTo(map);
       markersRef.current[bazar._id] = marker;
     });
+
+    // Global handler for popup "ম্যাপে রুট" button
+    (window as any).__showMapRoute = (bazarId: string) => {
+      const b = bazars.find(x => x._id === bazarId);
+      if (b) onBazarSelect?.(b);
+    };
   }, [bazars, heatmapData, userLocation, selectedBazarId, onBazarSelect]);
 
   // Pan + open popup for selected bazar
@@ -218,6 +251,33 @@ export default function HeatmapMapInner({
       setTimeout(() => marker.openPopup(), 900);
     }
   }, [selectedBazarId]);
+
+  // Draw OSRM route when bazar selected + user location available
+  useEffect(() => {
+    const map = mapRef.current;
+    // Remove old route
+    if (routeLineRef.current) {
+      routeLineRef.current.remove();
+      routeLineRef.current = null;
+    }
+    if (!map || !selectedBazarId || !userLocation) return;
+
+    const bazar = bazars.find(b => b._id === selectedBazarId);
+    if (!bazar?.lat || !bazar?.lng) return;
+
+    fetchOsrmRoute(userLocation, { lat: bazar.lat, lng: bazar.lng }).then(points => {
+      if (!points || !mapRef.current) return;
+      const line = L.polyline(points, {
+        color: '#064E3B',
+        weight: 5,
+        opacity: 0.75,
+        dashArray: '10, 6',
+        lineCap: 'round',
+        lineJoin: 'round',
+      }).addTo(mapRef.current);
+      routeLineRef.current = line;
+    });
+  }, [selectedBazarId, userLocation, bazars]);
 
   return (
     <div ref={containerRef} style={{ height, width: '100%', borderRadius: '16px', overflow: 'hidden', zIndex: 0 }} />

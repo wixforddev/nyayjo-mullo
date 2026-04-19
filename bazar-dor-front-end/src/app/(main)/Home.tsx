@@ -302,14 +302,22 @@ export function Home() {
                           </span>
                         )}
                         {userLocation && (
-                          <a
-                            href={googleMapsDirectionsUrl(userLocation.lat, userLocation.lng, bazar.lat, bazar.lng)}
-                            target="_blank" rel="noopener noreferrer"
-                            onClick={e => e.stopPropagation()}
-                            className={`text-[10px] font-semibold flex items-center gap-0.5 ${isSelected ? 'text-white/80' : 'text-blue-500'}`}
-                          >
-                            🗺️ রুট
-                          </a>
+                          <div className="flex gap-1">
+                            <a
+                              href={googleMapsDirectionsUrl(userLocation.lat, userLocation.lng, bazar.lat, bazar.lng)}
+                              target="_blank" rel="noopener noreferrer"
+                              onClick={e => e.stopPropagation()}
+                              className={`text-[10px] font-semibold flex items-center gap-0.5 px-1.5 py-0.5 rounded-md border ${isSelected ? 'text-white/80 border-white/30' : 'text-blue-500 border-blue-100 bg-blue-50'}`}
+                            >
+                              🗺️ Maps
+                            </a>
+                            <button
+                              onClick={e => { e.stopPropagation(); handleBazarSelectOnMap(bazar); }}
+                              className={`text-[10px] font-semibold flex items-center gap-0.5 px-1.5 py-0.5 rounded-md border ${isSelected ? 'text-white/80 border-white/30' : 'text-emerald-600 border-emerald-100 bg-emerald-50'}`}
+                            >
+                              📍 রুট
+                            </button>
+                          </div>
                         )}
                       </div>
                     </button>

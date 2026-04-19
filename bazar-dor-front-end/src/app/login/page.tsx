@@ -22,27 +22,10 @@ export default function LoginPage() {
     setError('');
     try {
       const res = await login({ email, password }).unwrap();
+      console.log(res)
       const user   = res.data.attributes.user;
       const tokens = res.data.attributes.tokens;
       dispatch(setCredentials({ user, tokens }));
-
-      // Update user's location in background after login
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition((pos) => {
-          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          localStorage.setItem('userLocation', JSON.stringify(loc));
-          // Best-effort PATCH — don't await, don't block navigation
-          const id = user.id || user._id;
-          const token = tokens.access.token;
-          if (id && token) {
-            fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3030/api/v1'}/users/${id}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-              body: JSON.stringify({ location: loc }),
-            }).catch(() => {});
-          }
-        }, () => {});
-      }
 
       router.push('/');
     } catch (err: any) {

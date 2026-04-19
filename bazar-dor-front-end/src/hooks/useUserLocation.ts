@@ -1,59 +1,54 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import {
+  locationRequested,
+  locationResolved,
+  locationFailed,
+} from '../store/slices/locationSlice';
 
-export interface UserLocation {
-  lat: number;
-  lng: number;
-}
-
-const STORAGE_KEY = 'userLocation';
-
-function loadCached(): UserLocation | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
-}
-
-function saveCache(loc: UserLocation) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(loc));
-}
+export type { UserLocation } from '../store/slices/locationSlice';
 
 /**
- * Returns the user's current GPS location.
- * Loads from localStorage cache immediately, then refreshes from the browser
- * Geolocation API and saves the new value.
+ * Returns the user's current GPS location from the Redux store.
+ *
+ * - First component to mount triggers the geolocation request.
+ * - All subsequent components just read from the store — no duplicate requests.
+ * - Call `refresh()` to force a new GPS reading (e.g. after a long session).
  */
 export function useUserLocation() {
-  const [location, setLocation] = useState<UserLocation | null>(loadCached);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState<string | null>(null);
+  const dispatch  = useAppDispatch();
+  const location  = useAppSelector(s => s.location.location);
+  const loading   = useAppSelector(s => s.location.loading);
+  const error     = useAppSelector(s => s.location.error);
+  const settled   = useAppSelector(s => s.location.settled);
 
-  const refresh = useCallback(() => {
-    if (!navigator.geolocation) {
-      setError('এই ব্রাউজারে লোকেশন সাপোর্ট নেই');
+  const fetchLocation = useCallback(() => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      dispatch(locationFailed('এই ব্রাউজারে লোকেশন সাপোর্ট নেই'));
       return;
     }
-    setLoading(true);
+    dispatch(locationRequested());
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setLocation(loc);
-        saveCache(loc);
-        setLoading(false);
+        dispatch(locationResolved({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        }));
       },
-      (err) => {
-        setError('লোকেশন অ্যাক্সেস দেওয়া হয়নি');
-        setLoading(false);
+      () => {
+        dispatch(locationFailed('লোকেশন অ্যাক্সেস দেওয়া হয়নি'));
       },
-      { enableHighAccuracy: true, timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 8000 },
     );
-  }, []);
+  }, [dispatch]);
 
-  // Auto-refresh once on mount
-  useEffect(() => { refresh(); }, []);
+  // Auto-fetch only once per session (when not yet settled)
+  useEffect(() => {
+    if (!settled && !loading) {
+      fetchLocation();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { location, loading, error, refresh };
+  return { location, loading, error, refresh: fetchLocation };
 }

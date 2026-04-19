@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Calendar, PlusCircle, User, Activity, Home, Map, Info, Bell, ShieldCheck, LogIn, LogOut } from 'lucide-react';
-import { useAppDispatch } from '../store/hooks';
+import { Calendar, PlusCircle, User, Activity, Home, Map, Info, Bell, ShieldCheck, LogIn, LogOut, Navigation } from 'lucide-react';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { logout } from '../store/slices/authSlice';
+import { locationRequested, locationResolved, locationFailed } from '../store/slices/locationSlice';
+import { useUpdateProfileMutation } from '../store/api/userApi';
 import { useRouter } from 'next/navigation';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { useAppSelector } from '../store/hooks';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -22,6 +23,40 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const isAdmin = user?.role === 'admin';
   const dispatch = useAppDispatch();
   const router = useRouter();
+
+  // ── Location state ──
+  const resolvedLocation = useAppSelector(s => s.location.location);
+  const locationLoading  = useAppSelector(s => s.location.loading);
+  const locationError    = useAppSelector(s => s.location.error);
+  const patchedRef       = useRef<string | null>(null);
+  const [updateProfile]  = useUpdateProfileMutation();
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !navigator.geolocation) return;
+    dispatch(locationRequested());
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        dispatch(locationResolved(loc));
+        localStorage.setItem('userLocation', JSON.stringify(loc));
+      },
+      () => {
+        dispatch(locationFailed('লোকেশন অ্যাক্সেস দেওয়া হয়নি'));
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Patch backend whenever location resolves (uses RTK Query auth — token auto-injected)
+  useEffect(() => {
+    if (!resolvedLocation || !user) return;
+    const locKey = `${resolvedLocation.lat},${resolvedLocation.lng}`;
+    if (patchedRef.current === locKey) return;
+    patchedRef.current = locKey;
+    const id = (user as any).id || (user as any)._id;
+    if (!id) return;
+    updateProfile({ id, location: resolvedLocation });
+  }, [resolvedLocation, user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const navItems = [
     { icon: Home,       label: 'হোম',       path: '/' },
@@ -224,6 +259,34 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div className="hidden md:block" />
             {/* Right actions */}
             <div className="flex items-center gap-2">
+              {/* Location button — shows when no location */}
+              <button
+                onClick={() => {
+                  if (!navigator.geolocation) return;
+                  dispatch(locationRequested());
+                  navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                      const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                      dispatch(locationResolved(loc));
+                      localStorage.setItem('userLocation', JSON.stringify(loc));
+                    },
+                    () => dispatch(locationFailed('লোকেশন অ্যাক্সেস দেওয়া হয়নি')),
+                    { enableHighAccuracy: true, timeout: 10000 },
+                  );
+                }}
+                title={resolvedLocation ? `লোকেশন সক্রিয়: ${resolvedLocation.lat.toFixed(3)}, ${resolvedLocation.lng.toFixed(3)}` : 'লোকেশন চালু করুন'}
+                className={cn(
+                  'w-10 h-10 rounded-full glass-pill flex items-center justify-center transition-colors active:scale-95',
+                  resolvedLocation
+                    ? 'text-emerald-500 hover:text-emerald-600'
+                    : locationLoading
+                    ? 'text-blue-400 animate-pulse'
+                    : 'text-slate-400 hover:text-blue-500',
+                )}
+              >
+                <Navigation className="w-4 h-4" strokeWidth={2} />
+              </button>
+
               {/* Info button */}
               <button
                 onClick={() => setShowDisclaimer(true)}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRegisterMutation, useVerifyEmailMutation } from '../../store/api/authApi';
 import { Activity, Eye, EyeOff, MapPin, Loader2 } from 'lucide-react';
@@ -24,19 +24,37 @@ export default function RegisterPage() {
   const [error, setError]         = useState('');
   const [success, setSuccess]     = useState('');
 
-  // Auto-fill location via browser geolocation
   const [geoLoading, setGeoLoading] = useState(false);
   const [location, setLocation]     = useState<{lat: number; lng: number} | null>(null);
+
+  // Auto-capture location on mount
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setLocation(loc);
+        localStorage.setItem('userLocation', JSON.stringify(loc));
+        setGeoLoading(false);
+      },
+      () => setGeoLoading(false),
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
+  }, []);
 
   const handleGeolocate = () => {
     if (!navigator.geolocation) return;
     setGeoLoading(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setLocation(loc);
+        localStorage.setItem('userLocation', JSON.stringify(loc));
         setGeoLoading(false);
       },
-      () => setGeoLoading(false)
+      () => setGeoLoading(false),
+      { enableHighAccuracy: true, timeout: 8000 },
     );
   };
 
