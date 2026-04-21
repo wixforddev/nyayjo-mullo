@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Shield, MapPin, TrendingUp, Bell, ChevronRight, LogOut, Settings, X, Medal } from 'lucide-react';
+import { Shield, Bell, ChevronRight, LogOut, Settings, X, Medal } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Leaderboard } from './Leaderboard';
@@ -129,6 +129,14 @@ export function Profile() {
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center"><Settings className="w-4 h-4 text-slate-500" /></div>
             <span className="font-semibold text-slate-700">সেটিংস</span>
+          </div>
+          <ChevronRight className="w-4 h-4 text-slate-300" />
+        </Link>
+
+        <Link href="/alerts" className="flex items-center justify-between p-4 border-b border-slate-50 hover:bg-slate-50 transition">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-rose-50 rounded-full flex items-center justify-center"><Bell className="w-4 h-4 text-rose-500" /></div>
+            <span className="font-semibold text-slate-700">এলার্ট</span>
           </div>
           <ChevronRight className="w-4 h-4 text-slate-300" />
         </Link>

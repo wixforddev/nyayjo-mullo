@@ -3,12 +3,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Calendar, PlusCircle, User, Activity, Home, Map, Info, Bell, ShieldCheck, LogIn, LogOut, Navigation } from 'lucide-react';
+import { Calendar, PlusCircle, User, Activity, Home, Map, Info, ShieldCheck, LogIn, Bell } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { logout } from '../store/slices/authSlice';
 import { locationRequested, locationResolved, locationFailed } from '../store/slices/locationSlice';
 import { useUpdateProfileMutation } from '../store/api/userApi';
-import { useRouter } from 'next/navigation';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -22,12 +20,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const user = useAppSelector((s) => s.auth.user);
   const isAdmin = user?.role === 'admin';
   const dispatch = useAppDispatch();
-  const router = useRouter();
 
   // ── Location state ──
   const resolvedLocation = useAppSelector(s => s.location.location);
-  const locationLoading  = useAppSelector(s => s.location.loading);
-  const locationError    = useAppSelector(s => s.location.error);
   const patchedRef       = useRef<string | null>(null);
   const [updateProfile]  = useUpdateProfileMutation();
 
@@ -59,12 +54,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [resolvedLocation, user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const navItems = [
-    { icon: Home,       label: 'হোম',       path: '/' },
-    { icon: Map,        label: 'মানচিত্র',  path: '/heatmap' },
+    { icon: Home,       label: 'হোম',          path: '/' },
+    { icon: Map,        label: 'মানচিত্র',     path: '/heatmap' },
     { icon: PlusCircle, label: 'দাম যোগ করুন', path: '/submit', primary: true },
-    { icon: Calendar,   label: 'প্ল্যানার',  path: '/planner' },
-    { icon: Bell,       label: 'এলার্ট',    path: '/alerts' },
-    { icon: User,       label: 'প্রোফাইল',  path: '/profile' },
+    { icon: Calendar,   label: 'প্ল্যানার',    path: '/planner' },
+    { icon: User,       label: 'প্রোফাইল',     path: '/profile' },
   ];
 
   // Active check: exact match for home, prefix match for all others
@@ -189,23 +183,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           )}
 
-          {/* Login / Logout in sidebar */}
-          <div className="shrink-0 md:px-1.5 lg:px-3 pb-2">
-            {user ? (
-              <button
-                onClick={() => { dispatch(logout()); router.push('/'); }}
-                title="লগ আউট"
-                className={cn(
-                  'w-full flex items-center gap-3 rounded-2xl transition-all',
-                  'text-red-400 hover:text-red-600 hover:bg-red-50/60',
-                  'md:justify-center md:py-3 md:px-0',
-                  'lg:justify-start lg:px-4 lg:py-3',
-                )}
-              >
-                <LogOut className="w-5 h-5 shrink-0" strokeWidth={1.5} />
-                <span className="hidden lg:block text-sm font-medium">লগ আউট</span>
-              </button>
-            ) : (
+          {/* Login button (only when not logged in) */}
+          {!user && (
+            <div className="shrink-0 md:px-1.5 lg:px-3 pb-2">
               <Link
                 href="/login"
                 title="লগইন"
@@ -219,8 +199,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <LogIn className="w-5 h-5 shrink-0" strokeWidth={1.5} />
                 <span className="hidden lg:block text-sm font-semibold">লগইন করুন</span>
               </Link>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Info / About */}
           <div className="shrink-0 md:px-1.5 lg:px-3 pb-6">
@@ -259,33 +239,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div className="hidden md:block" />
             {/* Right actions */}
             <div className="flex items-center gap-2">
-              {/* Location button — shows when no location */}
-              <button
-                onClick={() => {
-                  if (!navigator.geolocation) return;
-                  dispatch(locationRequested());
-                  navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                      const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                      dispatch(locationResolved(loc));
-                      localStorage.setItem('userLocation', JSON.stringify(loc));
-                    },
-                    () => dispatch(locationFailed('লোকেশন অ্যাক্সেস দেওয়া হয়নি')),
-                    { enableHighAccuracy: true, timeout: 10000 },
-                  );
-                }}
-                title={resolvedLocation ? `লোকেশন সক্রিয়: ${resolvedLocation.lat.toFixed(3)}, ${resolvedLocation.lng.toFixed(3)}` : 'লোকেশন চালু করুন'}
-                className={cn(
-                  'w-10 h-10 rounded-full glass-pill flex items-center justify-center transition-colors active:scale-95',
-                  resolvedLocation
-                    ? 'text-emerald-500 hover:text-emerald-600'
-                    : locationLoading
-                    ? 'text-blue-400 animate-pulse'
-                    : 'text-slate-400 hover:text-blue-500',
-                )}
+              {/* Notification / Alerts button */}
+              <Link
+                href="/alerts"
+                title="এলার্ট"
+                className="w-10 h-10 rounded-full glass-pill flex items-center justify-center text-slate-500 hover:text-[#064E3B] transition-colors active:scale-95"
               >
-                <Navigation className="w-4 h-4" strokeWidth={2} />
-              </button>
+                <Bell className="w-5 h-5" strokeWidth={1.5} />
+              </Link>
 
               {/* Info button */}
               <button
@@ -295,24 +256,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <Info className="w-5 h-5" strokeWidth={1.5} />
               </button>
 
-              {/* Login / User button */}
-              {user ? (
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full glass-pill">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#064E3B] to-[#10B981] flex items-center justify-center text-white text-xs font-bold shrink-0">
-                      {user.fullName?.[0]?.toUpperCase() || 'U'}
-                    </div>
-                    <span className="text-xs font-semibold text-slate-700 hidden sm:block max-w-[80px] truncate">{user.fullName}</span>
-                  </div>
-                  <button
-                    onClick={() => { dispatch(logout()); router.push('/'); }}
-                    title="লগ আউট"
-                    className="w-10 h-10 rounded-full glass-pill flex items-center justify-center text-slate-500 hover:text-red-500 transition-colors active:scale-95"
-                  >
-                    <LogOut className="w-4 h-4" strokeWidth={1.5} />
-                  </button>
-                </div>
-              ) : (
+              {/* Login button (only when not logged in) */}
+              {!user && (
                 <Link
                   href="/login"
                   className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#064E3B] to-[#10B981] text-white text-sm font-bold shadow-md shadow-emerald-900/15 hover:shadow-lg hover:shadow-emerald-900/25 active:scale-95 transition-all"
