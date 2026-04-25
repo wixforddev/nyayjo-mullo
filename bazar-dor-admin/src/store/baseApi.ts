@@ -11,6 +11,6 @@ export const baseApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ['Product', 'Bazar', 'Price', 'Alert', 'User'],
+  tagTypes: ['Product', 'Bazar', 'Price', 'Alert', 'User', 'DailySnapshot'],
   endpoints: () => ({}),
 });

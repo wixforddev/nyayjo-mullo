@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect } from 'react';
 import { MapPin, Minus, Plus, ChevronRight, Search, Car, ArrowRight } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { FoodRescue } from '@/components/FoodRescue';
-import { useGetProductsQuery } from '../../../store/api/productApi';
 import { useGetBazarsQuery } from '../../../store/api/bazarApi';
 import { useGetPricesQuery } from '../../../store/api/priceApi';
 
@@ -17,22 +16,19 @@ export function Planner() {
   const [selectedBazarId, setSelectedBazarId] = useState('');
   const [travelCost, setTravelCost] = useState('');
 
-  const { data: productsRes, isLoading: loadingProducts } = useGetProductsQuery({ limit: 50 });
   const { data: bazarsRes, isLoading: loadingBazars } = useGetBazarsQuery({ limit: 30 });
-  const { data: pricesRes } = useGetPricesQuery(
-    selectedBazarId ? { bazarId: selectedBazarId, limit: 100 } : {},
+  const { data: allPricesRes, isFetching: loadingAllPrices } = useGetPricesQuery({ limit: 200 });
+  const { data: bazarPricesRes, isFetching: loadingBazarPrices } = useGetPricesQuery(
+    { bazarId: selectedBazarId, limit: 200 },
     { skip: !selectedBazarId }
   );
 
-  const products = productsRes?.data?.attributes?.data || [];
   const bazars = bazarsRes?.data?.attributes?.data || [];
-  const prices: any[] = pricesRes?.data?.attributes?.data || [];
 
   useEffect(() => {
     const saved = localStorage.getItem('defaultBazarId');
     if (saved) setSelectedBazarId(saved);
-    else if (bazars.length > 0) setSelectedBazarId(bazars[0]._id);
-  }, [bazars]);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -40,12 +36,34 @@ export function Planner() {
     router.replace(`/planner?${params.toString()}`);
   }, [activeTab, router]);
 
-  const getLivePrice = (productId: string) => {
-    const p = prices.find((pr: any) => pr.productId?._id === productId || pr.productId === productId);
-    return p?.price ?? null;
-  };
+  const TODAY_MS = 24 * 60 * 60 * 1000;
+  const rawPrices: any[] = (selectedBazarId
+    ? bazarPricesRes?.data?.attributes?.data
+    : allPricesRes?.data?.attributes?.data) || [];
 
-  const getDisplayPrice = (product: any) => getLivePrice(product._id) ?? product.defaultPrice ?? 0;
+  // Only today's price submissions, deduplicated by productId (most recent wins)
+  const products = useMemo(() => {
+    const todayPrices = rawPrices.filter(
+      (p: any) => Date.now() - new Date(p.createdAt).getTime() < TODAY_MS
+    );
+    const seen = new Set<string>();
+    return todayPrices
+      .filter((p: any) => {
+        const pid = typeof p.productId === 'object' ? p.productId?._id : p.productId;
+        if (!pid || seen.has(pid)) return false;
+        seen.add(pid);
+        return true;
+      })
+      .map((p: any) => ({
+        ...(typeof p.productId === 'object' ? p.productId : { _id: p.productId }),
+        currentPrice: p.price,
+        priceEntry: p,
+      }));
+  }, [rawPrices]);
+
+  const loadingProducts = selectedBazarId ? loadingBazarPrices : loadingAllPrices;
+
+  const getDisplayPrice = (product: any) => product.currentPrice ?? product.defaultPrice ?? 0;
 
   const filteredProducts = useMemo(() => {
     if (!searchQuery.trim()) return products;
@@ -197,8 +215,7 @@ export function Planner() {
                   {filteredProducts.map((product: any) => {
                     const isSelected = !!selectedProducts[product._id];
                     const qty = selectedProducts[product._id] || 0;
-                    const livePrice = getLivePrice(product._id);
-                    const displayPrice = livePrice ?? product.defaultPrice;
+                    const displayPrice = getDisplayPrice(product);
                     return (
                       <div key={product._id}
                         className={`p-3 rounded-xl border transition-all ${isSelected ? 'border-emerald-400 bg-emerald-50/30' : 'border-slate-100 bg-white/40 hover:border-slate-200'}`}>
@@ -213,7 +230,6 @@ export function Planner() {
                               <span className="text-xs text-slate-500">{product.unit}</span>
                               <span className="text-[10px] text-slate-300">•</span>
                               <span className="font-num font-bold text-sm text-[#064E3B]">৳{displayPrice}</span>
-                              {livePrice && <span className="text-[10px] text-emerald-500 font-bold">লাইভ</span>}
                             </div>
                           </div>
                           {isSelected ? (
@@ -238,10 +254,10 @@ export function Planner() {
                       </div>
                     );
                   })}
-                  {filteredProducts.length === 0 && (
+                  {filteredProducts.length === 0 && !loadingProducts && (
                     <div className="col-span-3 text-center py-8 text-slate-400">
-                      <p className="text-3xl mb-2">🔍</p>
-                      <p className="text-sm">কোনো পণ্য পাওয়া যায়নি</p>
+                      <p className="text-3xl mb-2">🛒</p>
+                      <p className="text-sm">{searchQuery ? 'কোনো পণ্য পাওয়া যায়নি' : 'আজকে এখনো কোনো দাম সাবমিট হয়নি'}</p>
                     </div>
                   )}
                 </div>

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, Store, Tag, Bell, Users, LogOut, Activity, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Package, Store, Tag, Bell, Users, LogOut, Activity, ChevronRight, BarChart2 } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { logout } from '../store/slices/authSlice';
 
@@ -9,7 +9,8 @@ const nav = [
   { to: '/bazars',   icon: Store,           label: 'বাজার' },
   { to: '/prices',   icon: Tag,             label: 'দাম' },
   { to: '/alerts',   icon: Bell,            label: 'এলার্ট' },
-  { to: '/users',    icon: Users,           label: 'ব্যবহারকারী' },
+  { to: '/users',        icon: Users,      label: 'ব্যবহারকারী' },
+  { to: '/market-index', icon: BarChart2,  label: 'বাজার সূচক' },
 ];
 
 export function Sidebar() {

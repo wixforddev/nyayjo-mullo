@@ -8,6 +8,7 @@ import { Bazars } from './pages/Bazars';
 import { Prices } from './pages/Prices';
 import { Alerts } from './pages/Alerts';
 import { Users } from './pages/Users';
+import { MarketIndex } from './pages/MarketIndex';
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="prices" element={<Prices />} />
           <Route path="alerts" element={<Alerts />} />
           <Route path="users" element={<Users />} />
+          <Route path="market-index" element={<MarketIndex />} />
         </Route>
       </Routes>
     </BrowserRouter>

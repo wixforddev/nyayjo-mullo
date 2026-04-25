@@ -6,5 +6,6 @@ import Product from './product.model';
 import Bazar from './bazar.model';
 import Price from './price.model';
 import Alert from './alert.model';
+import DailySnapshot from './dailySnapshot.model';
 
-export { Token, User, Service, Tasks, Product, Bazar, Price, Alert };
+export { Token, User, Service, Tasks, Product, Bazar, Price, Alert, DailySnapshot };
