@@ -7,14 +7,27 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts';
+import { LineChart, Line, ResponsiveContainer, Tooltip, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { PromoBanner } from '@/components/PromoBanner';
 import { useGetBazarsQuery } from '../../store/api/bazarApi';
 import { useGetAlertsQuery } from '../../store/api/alertApi';
 import { useGetPricesQuery, useVotePriceMutation, useMarkStockOutMutation, useGetPriceHistoryQuery } from '../../store/api/priceApi';
+import { useGetDailySnapshotsQuery } from '../../store/api/snapshotApi';
 import { useAppSelector } from '../../store/hooks';
 import { useUserLocation } from '../../hooks/useUserLocation';
 import { distanceKm, formatDistance } from '../../lib/distance';
+
+function getDivision(lat: number, lng: number): string {
+  if (lat >= 25.0 && lng <= 90.0) return 'রংপুর';
+  if (lat >= 24.5 && lng >= 90.5) return 'ময়মনসিংহ';
+  if (lat >= 24.0 && lng <= 89.5) return 'রাজশাহী';
+  if (lat >= 24.0 && lng >= 91.5) return 'সিলেট';
+  if (lat >= 23.5 && lat < 24.5 && lng >= 89.9 && lng < 91.5) return 'ঢাকা';
+  if (lat < 23.5 && lng >= 91.0) return 'চট্টগ্রাম';
+  if (lat >= 22.0 && lat < 23.5 && lng >= 89.9) return 'বরিশাল';
+  if (lat >= 22.0 && lng < 89.9) return 'খুলনা';
+  return 'আপনার এলাকা';
+}
 
 
 
@@ -67,6 +80,15 @@ export function Home() {
     { productId: selectedProduct?._id, bazarId: selectedBazarId || undefined },
     { skip: !selectedProduct?._id }
   );
+  // All submissions for selected product — for best-time calculation
+  const { data: productSubmissionsRes } = useGetPricesQuery(
+    { productId: selectedProduct?._id, limit: 200 },
+    { skip: !selectedProduct?._id }
+  );
+
+  const today30 = new Date().toISOString().slice(0, 10);
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const { data: snapshotRes } = useGetDailySnapshotsQuery({ startDate: sevenDaysAgo, endDate: today30 });
 
   const [votePrice]    = useVotePriceMutation();
   const [markStockOut] = useMarkStockOutMutation();
@@ -151,13 +173,13 @@ export function Home() {
 
   const currentBazar = bazars.find((b: any) => b._id === selectedBazarId) as any;
 
-  // Essential products for daily index
+  // Essential products for daily basket index
   const ESSENTIAL = [
-    { key: 'chicken', label: 'মুরগি',   match: (n: string) => /মুরগি|chicken/i.test(n) },
-    { key: 'beef',    label: 'গরুর মাংস', match: (n: string) => /গরু|beef/i.test(n) },
-    { key: 'oil',     label: 'তেল',      match: (n: string) => /তেল|oil/i.test(n) },
-    { key: 'potato',  label: 'আলু',      match: (n: string) => /আলু|potato/i.test(n) },
-    { key: 'onion',   label: 'পেঁয়াজ',  match: (n: string) => /পেঁয়াজ|onion/i.test(n) },
+    { key: 'rice',    label: 'চাল',     unit: '১ কেজি',  qty: 1, match: (n: string) => /চাল|rice/i.test(n) },
+    { key: 'chicken', label: 'মুরগি',   unit: '১ কেজি',  qty: 1, match: (n: string) => /মুরগি|chicken/i.test(n) },
+    { key: 'oil',     label: 'সয়াবিন তেল', unit: '১ লিটার', qty: 1, match: (n: string) => /তেল|oil/i.test(n) },
+    { key: 'onion',   label: 'পেঁয়াজ', unit: '১ কেজি',  qty: 1, match: (n: string) => /পেঁয়াজ|onion/i.test(n) },
+    { key: 'potato',  label: 'আলু',     unit: '২ কেজি',  qty: 2, match: (n: string) => /আলু|potato/i.test(n) },
   ];
   const allRecentForIndex = [...prices, ...recentAllPrices];
   const NOW = Date.now();
@@ -172,12 +194,80 @@ export function Home() {
       return age >= 24 * 60 * 60 * 1000 && age < 48 * 60 * 60 * 1000;
     });
     const avg = (arr: any[]) => arr.length ? Math.round(arr.reduce((s, p) => s + p.price, 0) / arr.length) : null;
-    const today = avg(todayPrices) ?? avg(matched);
-    const yest  = avg(yestPrices);
-    const change = today !== null && yest !== null ? today - yest : null;
-    return { ...e, today, change };
+    const todayUnit = avg(todayPrices) ?? avg(matched);
+    const yestUnit  = avg(yestPrices);
+    const change = todayUnit !== null && yestUnit !== null ? todayUnit - yestUnit : null;
+    const itemTotal = todayUnit !== null ? Math.round(todayUnit * e.qty) : null;
+    return { ...e, today: todayUnit, change, itemTotal };
   });
-  const basketTotal = essentialData.reduce((s, e) => s + (e.today || 0), 0);
+  const basketTotal = essentialData.reduce((s, e) => s + (e.itemTotal || 0), 0);
+
+  // Basket change vs yesterday
+  const basketYestTotal = essentialData.reduce((s, e) => {
+    if (e.change === null || e.today === null) return s;
+    return s + Math.round((e.today - e.change) * e.qty);
+  }, 0);
+  const basketChange = basketTotal > 0 && basketYestTotal > 0 ? basketTotal - basketYestTotal : null;
+
+  // Division from location
+  const division = userLocation ? getDivision(userLocation.lat, userLocation.lng) : 'আপনার এলাকা';
+
+  // 7-day trend from live prices (day-by-day basket total)
+  const bnMonths = ['জান', 'ফেব', 'মার্চ', 'এপ্রি', 'মে', 'জুন', 'জুলা', 'আগ', 'সেপ', 'অক্টো', 'নভে', 'ডিসে'];
+  const trendData = (() => {
+    const result: { value: number; label: string }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const dayStart = Date.now() - (i + 1) * 24 * 60 * 60 * 1000;
+      const dayEnd   = Date.now() - i * 24 * 60 * 60 * 1000;
+      const d = new Date(dayEnd);
+      const label = `${d.getDate()} ${bnMonths[d.getMonth()]}`;
+      const dayPrices = allRecentForIndex.filter((p: any) => {
+        const t = new Date(p.createdAt).getTime();
+        return t >= dayStart && t < dayEnd;
+      });
+      let total = 0; let hasAny = false;
+      ESSENTIAL.forEach(e => {
+        const matched = dayPrices.filter((p: any) => {
+          const n = (typeof p.productId === 'object' ? (p.productId?.nameBn || p.productId?.name) : '') || '';
+          return e.match(n);
+        });
+        if (matched.length > 0) {
+          const avg = Math.round(matched.reduce((s: number, p: any) => s + p.price, 0) / matched.length);
+          total += avg * e.qty;
+          hasAny = true;
+        }
+      });
+      if (hasAny) result.push({ value: total, label });
+    }
+    return result;
+  })();
+
+  // Auto insight
+  const biggestChange = essentialData
+    .filter(e => e.change !== null && e.today !== null)
+    .sort((a, b) => Math.abs(b.change!) - Math.abs(a.change!))[0];
+  const insightTip = biggestChange?.change
+    ? `${biggestChange.label}র দাম কেজিতে ৳${Math.abs(biggestChange.change)} ${biggestChange.change > 0 ? 'বাড়ায় আজকের সূচক ঊর্ধ্বমুখী।' : 'কমায় আজকের সূচক নিম্নমুখী।'}`
+    : null;
+
+  const toBnTime = (h: number) => {
+    const period = h >= 5 && h < 12 ? 'সকাল' : h === 12 ? 'দুপুর' : h >= 13 && h < 17 ? 'বিকেল' : h >= 17 && h < 20 ? 'সন্ধ্যা' : 'রাত';
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${period} ${h12}টা`;
+  };
+
+  const getBestBuyTime = (submissions: any[]) => {
+    if (submissions.length < 5) return null;
+    const counts: Record<number, number> = {};
+    submissions.forEach((p: any) => {
+      const bdHour = (new Date(p.createdAt).getUTCHours() + 6) % 24;
+      counts[bdHour] = (counts[bdHour] || 0) + 1;
+    });
+    const best = Object.entries(counts).sort((a, b) => Number(b[1]) - Number(a[1]))[0];
+    if (!best) return null;
+    const h = Number(best[0]);
+    return `${toBnTime(h)} – ${toBnTime((h + 1) % 24)}`;
+  };
 
   const timeAgo = (dateStr: string) => {
     const mins = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
@@ -369,13 +459,15 @@ export function Home() {
           <div className="glass-card p-6 flex flex-col gap-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setIsIndexSheetOpen(true)}>
             <div className="flex justify-between items-start">
               <div>
-                <h2 className="text-sm font-medium text-slate-500 mb-1">দৈনিক বাজার সূচক</h2>
+                <h2 className="text-sm font-medium text-slate-500 mb-1">{division} বাজার সূচক</h2>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-bold text-[#064E3B] tracking-tight">৳ {basketTotal || 385}</span>
-                  <div className="flex items-center gap-1 text-[#10B981] bg-emerald-50 px-2 py-0.5 rounded-md">
-                    <TrendingDown className="w-3 h-3" strokeWidth={2.5} />
-                    <span className="text-xs font-bold">৩.২%</span>
-                  </div>
+                  <span className="text-4xl font-bold text-[#064E3B] tracking-tight">৳ {basketTotal || '—'}</span>
+                  {basketChange !== null && (
+                    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md ${basketChange > 0 ? 'text-rose-500 bg-rose-50' : 'text-[#10B981] bg-emerald-50'}`}>
+                      {basketChange > 0 ? <TrendingUp className="w-3 h-3" strokeWidth={2.5} /> : <TrendingDown className="w-3 h-3" strokeWidth={2.5} />}
+                      <span className="text-xs font-bold">{basketChange > 0 ? '+' : ''}{basketChange}</span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="inline-flex items-center gap-1 text-[10px] text-slate-400 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
@@ -428,8 +520,9 @@ export function Home() {
             <div className="flex-1 overflow-y-auto px-4 pb-8 flex flex-col gap-4">
               {(() => {
                 const isVerified = isVerifiedPrice(selectedProductPrice);
-                const history7 = (priceHistoryRes?.data?.attributes || [])
-                  .slice(-7)
+                const currentPrice = selectedProductPrice?.price ?? selectedProduct.bazarPrice ?? selectedProduct.defaultPrice;
+                const history5 = (priceHistoryRes?.data?.attributes || [])
+                  .slice(-5)
                   .map((h: any) => ({ value: Math.round(h.avgPrice) }));
                 return (
                   <div className="bg-white rounded-[32px] p-6 text-center shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-slate-50 mb-2 mt-2">
@@ -438,27 +531,11 @@ export function Home() {
                     </div>
                     <h2 className="text-sm font-bold text-slate-500 mb-1">{selectedProduct.nameBn || selectedProduct.name}</h2>
                     <div className="flex items-center justify-center gap-2 mb-1">
-                      <h1 className="text-5xl font-black text-slate-900 tracking-tight">
-                        ৳ {selectedProductPrice?.price ?? selectedProduct.bazarPrice ?? selectedProduct.defaultPrice}
-                      </h1>
-                      {isVerified && (
-                        <CheckCircle2 className="w-6 h-6 text-emerald-500" strokeWidth={2.5} />
-                      )}
+                      <h1 className="text-5xl font-black text-slate-900 tracking-tight">৳ {currentPrice}</h1>
+                      {isVerified && <CheckCircle2 className="w-6 h-6 text-emerald-500" strokeWidth={2.5} />}
                     </div>
                     <span className="text-sm font-semibold text-slate-500">প্রতি {selectedProduct.unit}</span>
-                    {isVerified && (
-                      <p className="text-xs text-emerald-600 font-bold mt-1">✓ ভেরিফায়েড দাম</p>
-                    )}
-                    {history7.length >= 2 && (
-                      <div className="h-12 mt-3 -mx-2">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={history7}>
-                            <Tooltip formatter={(v: any) => [`৳${v}`, 'গড় দাম']} contentStyle={{ borderRadius: '8px', border: 'none', fontSize: 11 }} />
-                            <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} dot={false} />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
+                    {isVerified && <p className="text-xs text-emerald-600 font-bold mt-1">✓ ভেরিফায়েড দাম</p>}
                   </div>
                 );
               })()}
@@ -528,6 +605,45 @@ export function Home() {
                   <Link href="/submit" className="inline-block mt-3 bg-[#064E3B] text-white px-5 py-2.5 rounded-xl text-sm font-bold">দাম যোগ করুন</Link>
                 </div>
               )}
+
+              {/* কেনার সেরা সময় + গত ৫ দিনে দাম */}
+              {(() => {
+                const history5 = (priceHistoryRes?.data?.attributes || [])
+                  .slice(-5)
+                  .map((h: any) => ({ value: Math.round(h.avgPrice) }));
+                const submissions = productSubmissionsRes?.data?.attributes?.data || [];
+                const bestTime = getBestBuyTime(submissions);
+                return (
+                  <div className="grid grid-cols-2 gap-3 mb-2">
+                    <div className="bg-white rounded-[24px] p-4 border border-slate-50 shadow-sm flex flex-col gap-1">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">কেনার সেরা সময়</p>
+                      {bestTime ? (
+                        <>
+                          <p className="text-sm font-black text-[#064E3B]">{bestTime}</p>
+                          <p className="text-[10px] text-slate-400 leading-relaxed">এই সময়ে সবচেয়ে বেশি দাম জমা হয়</p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-slate-300 pt-1">পর্যাপ্ত ডেটা নেই</p>
+                      )}
+                    </div>
+                    <div className="bg-white rounded-[24px] p-4 border border-slate-50 shadow-sm flex flex-col gap-1">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">গত ৫ দিনে দাম</p>
+                      {history5.length >= 2 ? (
+                        <div className="h-12 -mx-1">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={history5}>
+                              <Tooltip formatter={(v: any) => [`৳${v}`, '']} contentStyle={{ borderRadius: '8px', border: 'none', fontSize: 10 }} />
+                              <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} dot={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-300 pt-2">ডেটা নেই</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -547,30 +663,67 @@ export function Home() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-4 pb-8 flex flex-col gap-4">
-              <div className="flex flex-col items-center mt-2 mb-1">
-                <p className="text-slate-500 text-sm font-medium mb-1">৫টি নিত্যপ্রয়োজনীয় পণ্যের সূচক</p>
-                <h2 className="text-4xl font-black text-slate-900 tracking-tight">
-                  ৳ {basketTotal > 0 ? basketTotal : '—'}
+
+              {/* Header + Chart — single white card */}
+              <div className="bg-white rounded-[24px] p-5 border border-slate-100 shadow-sm">
+                <p className="text-xs font-bold text-emerald-600 mb-1">{division} এসেনশিয়াল বাস্কেট</p>
+                <h2 className="text-4xl font-black text-slate-900 tracking-tight mb-1">
+                  ৳ {basketTotal > 0 ? basketTotal.toLocaleString() : '—'}
                 </h2>
+                {basketChange !== null && (
+                  <p className={`text-sm font-semibold flex items-center gap-1 mb-4 ${basketChange > 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
+                    {basketChange > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                    গতকালের চেয়ে ৳{Math.abs(basketChange)} {basketChange > 0 ? 'বেশি' : 'কম'}
+                  </p>
+                )}
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">গত ৭ দিনের সূচক</p>
+                {trendData.length >= 2 ? (
+                  <div className="h-36 -mx-1">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendData} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                        <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                        <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={48} tickFormatter={(v) => `৳${v}`} domain={['auto', 'auto']} />
+                        <Tooltip
+                          formatter={(v: any) => [`৳${v}`, 'সূচক']}
+                          contentStyle={{ borderRadius: '10px', border: 'none', fontSize: 11, boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}
+                          labelStyle={{ color: '#64748b', fontSize: 10 }}
+                        />
+                        <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2.5} dot={{ fill: '#10B981', r: 3, strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-300 text-center py-6">ডেটা সংগ্রহ হচ্ছে...</p>
+                )}
               </div>
-              <div className="flex flex-col gap-2">
-                {essentialData.map(e => (
-                  <div key={e.key} className="bg-white rounded-2xl p-4 flex items-center justify-between border border-slate-50 shadow-sm">
-                    <span className="font-bold text-slate-700">{e.label}</span>
-                    <div className="flex items-center gap-3">
-                      {e.change !== null && (
-                        <span className={`text-xs font-bold flex items-center gap-0.5 ${e.change > 0 ? 'text-rose-500' : e.change < 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
-                          {e.change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                          {e.change > 0 ? '+' : ''}{e.change} টাকা
-                        </span>
-                      )}
-                      <span className="font-black text-[#064E3B] text-lg">
-                        {e.today ? `৳${e.today}` : '—'}
+
+              {/* Insight tip */}
+              {insightTip && (
+                <div className="bg-amber-50 rounded-[20px] px-4 py-3 border border-amber-100 flex items-start gap-2">
+                  <span className="text-base shrink-0 mt-0.5">💡</span>
+                  <p className="text-sm font-semibold text-amber-800 leading-relaxed">{insightTip}</p>
+                </div>
+              )}
+
+              {/* Basket items list */}
+              <div>
+                <p className="text-sm font-bold text-slate-700 mb-1 px-1">বাস্কেটের উপাদান</p>
+                <div className="divide-y divide-slate-100">
+                  {essentialData.map(e => (
+                    <div key={e.key} className="flex items-center justify-between py-3 px-1">
+                      <div className="flex items-center gap-1">
+                        <span className="font-semibold text-slate-700">{e.label}</span>
+                        <span className="text-xs text-slate-400">({e.unit})</span>
+                      </div>
+                      <span className="font-black text-[#064E3B]">
+                        {e.itemTotal ? `৳${e.itemTotal}` : e.today ? `৳${e.today}` : '—'}
                       </span>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
+
               <button onClick={() => setIsIndexSheetOpen(false)} className="w-full bg-slate-900 text-white rounded-[20px] py-4 font-bold mt-2">বন্ধ করুন</button>
             </div>
           </div>

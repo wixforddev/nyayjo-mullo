@@ -59,6 +59,10 @@ export function AllProducts() {
     { productId: selectedProduct?._id, bazarId: selectedBazarId || undefined },
     { skip: !selectedProduct?._id }
   );
+  const { data: productSubmissionsRes } = useGetPricesQuery(
+    { productId: selectedProduct?._id, limit: 200 },
+    { skip: !selectedProduct?._id }
+  );
 
   const [votePrice] = useVotePriceMutation();
   const [markStockOut] = useMarkStockOutMutation();
@@ -105,6 +109,25 @@ export function AllProducts() {
   const isVerifiedPrice = (p: any) => {
     const total = (p?.upvotes || 0) + (p?.downvotes || 0);
     return total >= 10 && (p?.upvotes || 0) / total >= 0.6;
+  };
+
+  const toBnTime = (h: number) => {
+    const period = h >= 5 && h < 12 ? 'সকাল' : h === 12 ? 'দুপুর' : h >= 13 && h < 17 ? 'বিকেল' : h >= 17 && h < 20 ? 'সন্ধ্যা' : 'রাত';
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${period} ${h12}টা`;
+  };
+
+  const getBestBuyTime = (submissions: any[]) => {
+    if (submissions.length < 5) return null;
+    const counts: Record<number, number> = {};
+    submissions.forEach((p: any) => {
+      const bdHour = (new Date(p.createdAt).getUTCHours() + 6) % 24;
+      counts[bdHour] = (counts[bdHour] || 0) + 1;
+    });
+    const best = Object.entries(counts).sort((a, b) => Number(b[1]) - Number(a[1]))[0];
+    if (!best) return null;
+    const h = Number(best[0]);
+    return `${toBnTime(h)} – ${toBnTime((h + 1) % 24)}`;
   };
 
   const timeAgo = (dateStr: string) => {
@@ -266,9 +289,8 @@ export function AllProducts() {
             <div className="flex-1 overflow-y-auto px-4 pb-8 flex flex-col gap-4">
               {(() => {
                 const isVerified = isVerifiedPrice(selectedProductPrice);
-                const history7 = (priceHistoryRes?.data?.attributes || [])
-                  .slice(-7)
-                  .map((h: any) => ({ value: Math.round(h.avgPrice) }));
+                const currentPrice = selectedProductPrice?.price ?? selectedProduct.bazarPrice ?? selectedProduct.defaultPrice;
+                const bulkPrice = currentPrice ? Math.round(currentPrice * 0.93) : null;
                 return (
                   <div className="bg-white rounded-[32px] p-6 text-center shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-slate-50 mb-2 mt-2">
                     <div className="inline-flex items-center justify-center w-12 h-12 bg-orange-50 rounded-full text-2xl mb-3">
@@ -276,22 +298,15 @@ export function AllProducts() {
                     </div>
                     <h2 className="text-sm font-bold text-slate-500 mb-1">{selectedProduct.nameBn || selectedProduct.name}</h2>
                     <div className="flex items-center justify-center gap-2 mb-1">
-                      <h1 className="text-5xl font-black text-slate-900 tracking-tight">
-                        ৳ {selectedProductPrice?.price ?? selectedProduct.bazarPrice ?? selectedProduct.defaultPrice}
-                      </h1>
+                      <h1 className="text-5xl font-black text-slate-900 tracking-tight">৳ {currentPrice}</h1>
                       {isVerified && <CheckCircle2 className="w-6 h-6 text-emerald-500" strokeWidth={2.5} />}
                     </div>
                     <span className="text-sm font-semibold text-slate-500">প্রতি {selectedProduct.unit}</span>
                     {isVerified && <p className="text-xs text-emerald-600 font-bold mt-1">✓ ভেরিফায়েড দাম</p>}
-                    {history7.length >= 2 && (
-                      <div className="h-12 mt-3 -mx-2">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={history7}>
-                            <Tooltip formatter={(v: any) => [`৳${v}`, 'গড় দাম']} contentStyle={{ borderRadius: '8px', border: 'none', fontSize: 11 }} />
-                            <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} dot={false} />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
+                    {bulkPrice && (
+                      <p className="text-xs text-blue-600 font-semibold mt-2 bg-blue-50 inline-block px-3 py-1 rounded-full">
+                        💡 ২ {selectedProduct.unit || 'কেজি'}র বেশি কিনলে ৳{bulkPrice}
+                      </p>
                     )}
                   </div>
                 );
@@ -361,6 +376,45 @@ export function AllProducts() {
                   <Link href="/submit" className="inline-block mt-3 bg-[#064E3B] text-white px-5 py-2.5 rounded-xl text-sm font-bold">দাম যোগ করুন</Link>
                 </div>
               )}
+
+              {/* কেনার সেরা সময় + গত ৫ দিনে দাম */}
+              {(() => {
+                const history5 = (priceHistoryRes?.data?.attributes || [])
+                  .slice(-5)
+                  .map((h: any) => ({ value: Math.round(h.avgPrice) }));
+                const submissions = productSubmissionsRes?.data?.attributes?.data || [];
+                const bestTime = getBestBuyTime(submissions);
+                return (
+                  <div className="grid grid-cols-2 gap-3 mb-2">
+                    <div className="bg-white rounded-[24px] p-4 border border-slate-50 shadow-sm flex flex-col gap-1">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">কেনার সেরা সময়</p>
+                      {bestTime ? (
+                        <>
+                          <p className="text-sm font-black text-[#064E3B]">{bestTime}</p>
+                          <p className="text-[10px] text-slate-400 leading-relaxed">এই সময়ে সবচেয়ে বেশি দাম জমা হয়</p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-slate-300 pt-1">পর্যাপ্ত ডেটা নেই</p>
+                      )}
+                    </div>
+                    <div className="bg-white rounded-[24px] p-4 border border-slate-50 shadow-sm flex flex-col gap-1">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">গত ৫ দিনে দাম</p>
+                      {history5.length >= 2 ? (
+                        <div className="h-12 -mx-1">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={history5}>
+                              <Tooltip formatter={(v: any) => [`৳${v}`, '']} contentStyle={{ borderRadius: '8px', border: 'none', fontSize: 10 }} />
+                              <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} dot={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-300 pt-2">ডেটা নেই</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

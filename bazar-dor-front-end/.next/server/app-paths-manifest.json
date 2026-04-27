@@ -1,8 +1,6 @@
 {
   "/(main)/page": "app/(main)/page.js",
-  "/(main)/products/page": "app/(main)/products/page.js",
-  "/(main)/submit/page": "app/(main)/submit/page.js",
+  "/(main)/profile/page": "app/(main)/profile/page.js",
   "/(main)/planner/page": "app/(main)/planner/page.js",
-  "/(main)/result/page": "app/(main)/result/page.js",
-  "/(main)/profile/page": "app/(main)/profile/page.js"
+  "/(main)/result/page": "app/(main)/result/page.js"
 }

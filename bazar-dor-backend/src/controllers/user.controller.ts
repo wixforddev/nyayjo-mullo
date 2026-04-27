@@ -130,7 +130,7 @@ const getLeaderboard = catchAsync(async (req: Request, res: Response) => {
       },
     },
     { $sort: { verifiedSubmissions: -1, totalSubmissions: -1 } },
-    { $limit: 20 },
+    { $limit: 50 },
     {
       $lookup: {
         from: 'users',
@@ -143,9 +143,10 @@ const getLeaderboard = catchAsync(async (req: Request, res: Response) => {
     {
       $project: {
         userId: '$_id',
-        name: '$user.name',
+        name: '$user.fullName',
         totalSubmissions: 1,
         verifiedSubmissions: 1,
+        location: '$user.location',
       },
     },
   ]);

@@ -11,15 +11,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/(main)/page.js"
     ],
-    "/(main)/products/page": [
+    "/(main)/profile/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/(main)/products/page.js"
-    ],
-    "/(main)/submit/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/(main)/submit/page.js"
+      "static/chunks/app/(main)/profile/page.js"
     ],
     "/(main)/planner/page": [
       "static/chunks/webpack.js",
@@ -30,11 +25,6 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/(main)/result/page.js"
-    ],
-    "/(main)/profile/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/(main)/profile/page.js"
     ]
   }
 }
