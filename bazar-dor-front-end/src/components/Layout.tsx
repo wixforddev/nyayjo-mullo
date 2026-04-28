@@ -270,7 +270,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </header>
 
           {/* Page content */}
-          <main className="flex-1 px-4 md:px-6 lg:px-8 pb-6">
+          <main className="flex-1 px-4 md:px-6 lg:px-8 pb-6 overflow-x-hidden">
             {children}
           </main>
         </div>
