@@ -1,9 +1,21 @@
 import httpStatus from 'http-status';
 import ApiError from '../utils/ApiError';
 import { Price } from '../models';
+import { detectPriceSpike } from './alert.service';
 
 const createPrice = async (data: any) => {
   const price = await Price.create(data);
+
+  // Auto-alert if price is a spike (non-blocking)
+  if (price.productId && price.price) {
+    detectPriceSpike(
+      price.productId.toString(),
+      price.price,
+      price.bazarId?.toString(),
+      price.userId?.toString(),
+    );
+  }
+
   return price;
 };
 

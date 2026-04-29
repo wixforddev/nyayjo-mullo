@@ -32,7 +32,7 @@ bazar-dor-main/
 | Product | `product.model.ts` | পণ্য — name, nameBn, unit, icon, defaultPrice |
 | Bazar | `bazar.model.ts` | বাজার — name, nameBn, area, lat, lng, isActive |
 | Price | `price.model.ts` | দাম এন্ট্রি — price, upvotes, downvotes, voters[], isVerified, expiresAt (24h) |
-| Alert | `alert.model.ts` | জরুরী এলার্ট — message, messageBn |
+| Alert | `alert.model.ts` | জরুরী এলার্ট — type, message, messageBn, severity, productId, bazarId, isActive, expiresAt |
 | DailySnapshot | `dailySnapshot.model.ts` | দৈনিক বাজার সূচক স্ন্যাপশট |
 
 ### DailySnapshot Model (বিস্তারিত)
@@ -77,8 +77,10 @@ bazar-dor-main/
 - `GET /heatmap` — বাজার অনুযায়ী গড় দাম
 
 **Alerts** — `/api/v1/alerts`
-- `GET /` — এলার্ট list
-- `POST /` — নতুন এলার্ট (admin)
+- `GET /` — active এলার্ট list (filter: isActive, severity, type)
+- `POST /` — নতুন এলার্ট (admin manual)
+- `PUT /:id` — এলার্ট update (admin)
+- `DELETE /:id` — এলার্ট delete (admin)
 
 **Daily Snapshots** — `/api/v1/daily-snapshots`
 - `GET /` — সব snapshot (`?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD`)
@@ -89,6 +91,121 @@ bazar-dor-main/
 - **Schedule:** প্রতিদিন রাত ১১:৫৯ (Bangladesh time = UTC 17:59)
 - **কাজ:** সেদিনের সব Price থেকে ৫টি essential পণ্যের গড় বের করে DailySnapshot এ save করে
 - **File:** `src/index.ts`, service: `src/services/dailySnapshot.service.ts`
+
+---
+
+### Auto-Alert System (স্বয়ংক্রিয় মূল্য সতর্কতা)
+
+**Files:**
+- Logic: `src/services/alert.service.ts` → `detectPriceSpike()`
+- Trigger: `src/services/price.service.ts` → `createPrice()`
+- Model: `src/models/alert.model.ts`
+
+#### কিভাবে কাজ করে
+
+প্রতিবার নতুন দাম submit হলে `createPrice()` শেষে `detectPriceSpike()` **non-blocking** ভাবে call হয়।
+Alert system fail করলেও price submission fail হয় না।
+
+#### Alert এর Constants
+```ts
+SPIKE_THRESHOLD      = 0.30   // ৩০% বৃদ্ধি হলে spike ধরা হয়
+DUPLICATE_WINDOW_MS  = 6h     // একই পণ্যে ৬ ঘণ্টার মধ্যে duplicate alert হয় না
+REF_WINDOW_DAYS      = 7      // reference median হিসাব: গত ৭ দিনের দাম
+TODAY_CONFIRM_COUNT  = 2      // alert তৈরিতে কমপক্ষে ২ জন আলাদা user confirm করতে হবে
+```
+
+#### Spike Detection Step-by-Step
+
+```
+Step 1 — Reference Median বের করা
+  গত ৭ দিনের দাম নেওয়া হয় (আজকের দাম বাদে)
+  কারণ: আজকের spike দাম median এ ঢুকলে reference inflate হয়ে যাবে
+  কমপক্ষে ৩টি historical price না থাকলে → বন্ধ (insufficient data)
+
+Step 2 — Spike Check
+  changeRatio = (newPrice - median) / median
+  changeRatio < 0.30 → বন্ধ (spike না)
+
+Step 3 — Confirmation Check (false alert রোধ)
+  আজকে কতজন আলাদা user এই পণ্যের spike দাম (≥ median × 1.30) submit করেছে?
+  uniqueUsers < 2 → বন্ধ (একজনের ভুল entry হতে পারে)
+
+Step 4 — Duplicate Check
+  একই productId এ গত ৬ ঘণ্টায় active price_spike alert আছে? → বন্ধ
+
+Step 5 — Alert তৈরি
+  severity নির্ধারণ:
+    30–40% বৃদ্ধি → "low"
+    40–60% বৃদ্ধি → "medium"
+    60–80% বৃদ্ধি → "high"
+    80%+  বৃদ্ধি → "critical"
+  expiresAt = ৪৮ ঘণ্টা পরে
+  message ও messageBn বাংলায় auto-generate
+```
+
+#### উদাহরণ
+```
+আলুর median (গত ৭ দিন) = ৳৪০
+Spike threshold          = ৳৪০ × ১.৩০ = ৳৫২
+
+User A → ৳৫৮ submit করল  (৪৫% বৃদ্ধি) ✅ spike — কিন্তু ১ জন, alert নেই
+User B → ৳৬০ submit করল  (৫০% বৃদ্ধি) ✅ spike — ২ জন confirmed
+
+→ Alert তৈরি: severity = "medium"
+→ messageBn: "আলু-এর দাম অস্বাভাবিকভাবে ৪৭% বৃদ্ধি পেয়েছে (৳৪০ → ৳৫৮)"
+```
+
+#### Global vs Local Alert (কোন scope এ alert?)
+
+```
+একই পণ্যে spike →
+
+  ১–২ বাজারে confirmed  → 📍 Bazar-specific alert (bazarId = ঐ বাজার)
+  ৩+ বাজারে confirmed   → 🌐 Global alert (bazarId = null)
+                           + পুরনো local alert গুলো deactivate হয়
+```
+
+`GLOBAL_BAZAR_COUNT = 3` — এই constant দিয়ে threshold control করা যায়।
+
+#### Duplicate Prevention
+- Local alert: একই product + bazar এ ৬h এর মধ্যে duplicate হয় না
+- Global alert: একই product এ ৬h এর মধ্যে global duplicate হয় না
+
+#### Multiple Product Spike (একই দিনে একাধিক পণ্য)
+- আলু এবং তেল একই দিনে spike করলে → **দুটো আলাদা alert** তৈরি হয়
+- Backend sort: `severity: -1, createdAt: -1`
+- বাকি সব alert `/alerts` page এ দেখা যায়
+
+#### Frontend Display Logic (`src/app/(main)/Home.tsx`)
+```ts
+// দুটো query চলে:
+useGetAlertsQuery({ limit: 10 })          // global alerts (bazarId = null)
+useGetAlertsQuery({ bazarId, limit: 5 })  // user এর বাজারের local alerts
+
+// Merge করে priority দেওয়া হয়:
+alerts = [...localAlerts, ...globalAlerts]
+topAlert = alerts[0]  // local alert আগে, তারপর global
+
+// Banner:
+topAlert আছে + bazarId আছে  → 📍 বাজারের নাম সহ লাল banner
+topAlert আছে + bazarId নেই  → 🌐 সারাদেশে লাল banner
+topAlert নেই                → ✅ সবুজ banner: "বাজারের দাম স্বাভাবিক আছে"
+```
+
+#### Alert Model Fields
+```ts
+type      : "price_spike" | "stock_out" | "market_closed" | "general"
+severity  : "low" | "medium" | "high" | "critical"
+productId : ObjectId (ref: Product)
+bazarId   : ObjectId (ref: Bazar) | null
+message   : English message
+messageBn : বাংলা message
+isActive  : Boolean (default: true)
+expiresAt : Date (auto-alert: ৪৮h, manual: ৭ দিন)
+createdBy : ObjectId (ref: User) — manual alert এ admin এর id
+```
+
+---
 
 ### DailySnapshot Logic
 1. সেদিনের (00:00–23:59) সব Price fetch করে

@@ -144,8 +144,8 @@ export function Settings() {
 
       {/* MODALS */}
       {activeModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-md rounded-[32px] p-6 shadow-2xl relative animate-in slide-in-from-bottom-10">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4 pt-4 pb-24 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-md rounded-[32px] p-6 shadow-2xl relative animate-in slide-in-from-bottom-10 overflow-y-auto max-h-[85vh]">
             <button onClick={closeModal}
               className="absolute top-4 right-4 w-8 h-8 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center font-bold">✕</button>
 

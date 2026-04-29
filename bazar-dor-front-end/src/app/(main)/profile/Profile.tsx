@@ -347,9 +347,9 @@ export function Profile() {
 
       {/* ── Add Expense Modal ── */}
       {showAddExpense && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/30 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/30 backdrop-blur-sm animate-in fade-in duration-200 pb-20">
           <div className="absolute inset-0" onClick={() => setShowAddExpense(false)} />
-          <div className="w-full max-w-lg bg-white rounded-t-[32px] p-6 relative z-10 animate-in slide-in-from-bottom-full duration-300">
+          <div className="w-full max-w-lg bg-white rounded-t-[32px] p-6 pb-8 relative z-10 animate-in slide-in-from-bottom-full duration-300">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-bold text-slate-800">খরচ যোগ করুন</h3>
               <button onClick={() => setShowAddExpense(false)} className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center">
@@ -387,7 +387,7 @@ export function Profile() {
 
       {/* ── Leaderboard Modal ── */}
       {showLeaderboard && (
-        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-slate-900/30 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-slate-900/30 backdrop-blur-sm animate-in fade-in duration-300 pb-20 lg:pb-0">
           <div className="absolute inset-0" onClick={() => setShowLeaderboard(false)} />
           <div className="w-full lg:max-w-lg max-h-[85vh] bg-[#FAFCFC] rounded-t-[32px] lg:rounded-[32px] shadow-2xl relative z-10 flex flex-col animate-in slide-in-from-bottom-full lg:zoom-in-95 duration-300">
             <div className="flex items-center justify-between p-5 border-b border-slate-100 shrink-0">

@@ -1,8 +1,7 @@
 {
   "/(main)/page": "app/(main)/page.js",
-  "/(main)/planner/page": "app/(main)/planner/page.js",
-  "/(main)/heatmap/page": "app/(main)/heatmap/page.js",
+  "/(main)/submit/page": "app/(main)/submit/page.js",
   "/(main)/profile/page": "app/(main)/profile/page.js",
   "/(main)/alerts/page": "app/(main)/alerts/page.js",
-  "/(main)/submit/page": "app/(main)/submit/page.js"
+  "/(main)/settings/page": "app/(main)/settings/page.js"
 }

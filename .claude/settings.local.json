@@ -3,7 +3,8 @@
     "allow": [
       "Bash(grep -E \"\\\\.tsx$|^d\")",
       "Bash(npm install:*)",
-      "Bash(npm create *)"
+      "Bash(npm create *)",
+      "Bash(npx tsc *)"
     ]
   }
 }

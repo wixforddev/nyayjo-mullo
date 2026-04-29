@@ -64,7 +64,11 @@ export function Home() {
   const { location: userLocation, refresh: refreshLocation } = useUserLocation();
 
   const { data: bazarsRes, isLoading: loadingBazars } = useGetBazarsQuery({ limit: 50 });
-  const { data: alertsRes } = useGetAlertsQuery({ limit: 3 });
+  const { data: alertsRes }       = useGetAlertsQuery({ limit: 10 });
+  const { data: localAlertsRes }  = useGetAlertsQuery(
+    { bazarId: selectedBazarId, limit: 5 },
+    { skip: !selectedBazarId },
+  );
   // Bazar-specific prices (all, verified badge shown on card)
   const { data: pricesRes, isFetching: loadingBazarPrices } = useGetPricesQuery(
     { bazarId: selectedBazarId, limit: 100 },
@@ -93,9 +97,11 @@ export function Home() {
   const [votePrice]    = useVotePriceMutation();
   const [markStockOut] = useMarkStockOutMutation();
 
-  const bazars   = bazarsRes?.data?.attributes?.data   || [];
-  const alerts   = alertsRes?.data?.attributes?.data   || [];
-  const prices   = pricesRes?.data?.attributes?.data   || [];
+  const bazars       = bazarsRes?.data?.attributes?.data      || [];
+  const globalAlerts = (alertsRes?.data?.attributes?.data     || []).filter((a: any) => !a.bazarId);
+  const localAlerts  = localAlertsRes?.data?.attributes?.data || [];
+  const alerts       = [...localAlerts, ...globalAlerts];
+  const prices       = pricesRes?.data?.attributes?.data      || [];
 
   const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
   const NEARBY_KM  = 10;
@@ -300,7 +306,7 @@ export function Home() {
   };
 
   return (
-    <div className="pb-12">
+    <div className="pb-24 lg:pb-12">
       <div className="flex flex-col lg:flex-row gap-6 items-start">
 
         {/* ── Left Column ── */}
@@ -308,24 +314,60 @@ export function Home() {
 
           {/* Alert Banner */}
           {topAlert ? (
-            <div className="bg-rose-50/80 backdrop-blur-md border border-rose-100 rounded-2xl p-4 flex items-start gap-3 cursor-pointer hover:bg-rose-100/80 transition-colors relative overflow-hidden">
-              <div className="absolute inset-0 border-2 border-rose-200/50 rounded-2xl animate-pulse pointer-events-none" />
-              <span className="text-xl shrink-0 mt-0.5">⚠️</span>
-              <div className="flex-1">
-                <h3 className="text-sm font-bold text-rose-800 leading-tight">{topAlert.message}</h3>
-                {topAlert.messageBn && <p className="text-xs text-rose-600 mt-0.5">{topAlert.messageBn}</p>}
+            <Link href="/alerts" className="block">
+              <div className="bg-rose-50/80 backdrop-blur-md border border-rose-100 rounded-2xl p-4 flex items-start gap-3 hover:bg-rose-100/80 transition-colors relative overflow-hidden">
+                <div className="absolute inset-0 border-2 border-rose-200/50 rounded-2xl animate-pulse pointer-events-none" />
+                <span className="text-xl shrink-0 mt-0.5">⚠️</span>
+                <div className="flex-1 min-w-0">
+                  {/* local alert হলে বাজারের নাম দেখাও */}
+                  {topAlert.bazarId && (
+                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wide mb-0.5">
+                      📍 {topAlert.bazarId?.nameBn || topAlert.bazarId?.name}
+                    </p>
+                  )}
+                  {!topAlert.bazarId && (
+                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wide mb-0.5">
+                      🌐 সারাদেশে
+                    </p>
+                  )}
+                  <h3 className="text-sm font-bold text-rose-800 leading-tight">{topAlert.messageBn || topAlert.message}</h3>
+                </div>
+                <span className="shrink-0 text-rose-400 text-lg mt-1">→</span>
               </div>
-              <Link href="/alerts" className="shrink-0 text-rose-400 text-lg mt-2">→</Link>
-            </div>
+            </Link>
           ) : (
-            <div className="bg-rose-50/80 backdrop-blur-md border border-rose-100 rounded-2xl p-4 flex items-start gap-3">
-              <span className="text-xl shrink-0 mt-0.5">⚠️</span>
+            <div className="bg-emerald-50/80 backdrop-blur-md border border-emerald-100 rounded-2xl p-4 flex items-center gap-3">
+              <span className="text-xl shrink-0">✅</span>
               <div>
-                <h3 className="text-sm font-bold text-rose-800">জরুরী এলার্ট: বাজারে কাঁচা মরিচের চরম সংকট ও দাম ঊর্ধ্বমুখী।</h3>
-                <p className="text-xs text-rose-600 mt-0.5">গত ২৪ ঘণ্টায় দাম ৪০% বৃদ্ধি পেয়েছে।</p>
+                <h3 className="text-sm font-bold text-emerald-800">বাজারের দাম স্বাভাবিক আছে</h3>
+                <p className="text-xs text-emerald-600 mt-0.5">এই মুহূর্তে কোনো অস্বাভাবিক মূল্য বৃদ্ধি পাওয়া যায়নি।</p>
               </div>
             </div>
           )}
+
+          {/* Mobile-only compact market index */}
+          <button
+            onClick={() => setIsIndexSheetOpen(true)}
+            className="lg:hidden w-full glass-card px-4 py-3 flex items-center justify-between active:scale-[0.98] transition-transform"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col items-start">
+                <span className="text-[10px] text-slate-400 font-medium">{division} বাজার সূচক</span>
+                <span className="text-xl font-black text-[#064E3B] tracking-tight">৳ {basketTotal || '—'}</span>
+              </div>
+              {basketChange !== null && (
+                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold ${basketChange > 0 ? 'text-rose-500 bg-rose-50' : 'text-emerald-600 bg-emerald-50'}`}>
+                  {basketChange > 0 ? <TrendingUp className="w-3 h-3" strokeWidth={2.5} /> : <TrendingDown className="w-3 h-3" strokeWidth={2.5} />}
+                  {basketChange > 0 ? '+' : ''}{basketChange}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
+              <Clock className="w-3 h-3" strokeWidth={1.5} />
+              <span>লাইভ</span>
+              <ChevronRight className="w-4 h-4 ml-1 text-slate-300" />
+            </div>
+          </button>
 
           {/* Hero Card */}
           <div className="glass-card p-6 relative overflow-hidden group">
@@ -455,7 +497,7 @@ export function Home() {
         </div>
 
         {/* ── Right Column ── */}
-        <div className="lg:w-80 xl:w-96 flex-shrink-0 flex flex-col gap-4">
+        <div className="lg:w-80 xl:w-96 flex-shrink-0 hidden lg:flex flex-col gap-4">
           <div className="glass-card p-6 flex flex-col gap-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setIsIndexSheetOpen(true)}>
             <div className="flex justify-between items-start">
               <div>
@@ -506,7 +548,7 @@ export function Home() {
 
       {/* Product Detail Modal */}
       {selectedProduct && (
-        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-slate-900/20 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-slate-900/20 backdrop-blur-sm animate-in fade-in duration-300 pb-20 lg:pb-0">
           <div className="absolute inset-0" onClick={() => setSelectedProduct(null)} />
           <div className="w-full lg:max-w-lg h-[85vh] lg:h-auto lg:max-h-[85vh] bg-[#FAFCFC] rounded-t-[32px] lg:rounded-[32px] shadow-2xl relative z-10 flex flex-col animate-in slide-in-from-bottom-full lg:zoom-in-95 duration-300">
             <div className="w-full flex justify-center pt-4 pb-2 shrink-0 lg:hidden">
@@ -651,7 +693,7 @@ export function Home() {
 
       {/* Market Index Modal */}
       {isIndexSheetOpen && (
-        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-slate-900/20 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-slate-900/20 backdrop-blur-sm animate-in fade-in duration-300 pb-20 lg:pb-0">
           <div className="absolute inset-0" onClick={() => setIsIndexSheetOpen(false)} />
           <div className="w-full lg:max-w-lg h-[85vh] lg:h-auto lg:max-h-[85vh] bg-[#FAFCFC] rounded-t-[32px] lg:rounded-[32px] shadow-2xl relative z-10 flex flex-col animate-in slide-in-from-bottom-full lg:zoom-in-95 duration-300">
             <div className="w-full flex justify-center pt-4 pb-2 shrink-0 lg:hidden">
