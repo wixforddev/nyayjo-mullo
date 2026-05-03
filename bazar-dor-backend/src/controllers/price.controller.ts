@@ -4,12 +4,16 @@ import response from '../config/response';
 import { priceService } from '../services';
 import catchAsync from '../utils/catchAsync';
 import pick from '../utils/pick';
+import { uploadToCloudinary } from '../config/cloudinary';
 
 const createPrice = catchAsync(async (req: Request, res: Response) => {
-  const priceData = {
+  const priceData: any = {
     ...req.body,
     userId: (req as any).user._id,
   };
+  if ((req as any).file) {
+    priceData.photoUrl = await uploadToCloudinary((req as any).file.buffer, 'bazar-dor/price-proofs');
+  }
   const price = await priceService.createPrice(priceData);
   res.status(httpStatus.CREATED).json(
     response({

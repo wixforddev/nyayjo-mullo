@@ -23,7 +23,7 @@ export const bazarApi = baseApi.injectEndpoints({
       invalidatesTags: ['Bazar'],
     }),
     getNearbyBazars: builder.query({
-      query: (params: { lat: number; lng: number; limit?: number }) => ({ url: '/bazars/nearby', params }),
+      query: (params: { lat: number; lng: number; radius?: number; limit?: number }) => ({ url: '/bazars/nearby', params }),
       providesTags: ['Bazar'],
     }),
   }),

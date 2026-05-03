@@ -1,46 +1,25 @@
 import multer from 'multer';
-import path from 'path';
 import { Request } from 'express';
 
-export default function (UPLOADS_FOLDER: string) {
-  const storage = multer.diskStorage({
-    destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
-      cb(null, UPLOADS_FOLDER);
-    },
-    filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
-      const fileExt = path.extname(file.originalname);
-      const filename =
-        file.originalname
-          .replace(fileExt, '')
-          .toLowerCase()
-          .split(' ')
-          .join('-') +
-        '-' +
-        Date.now();
+const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
 
-      cb(null, filename + fileExt);
-    },
-  });
-
-  const upload = multer({
-    storage: storage,
-    limits: {
-      fileSize: 20000000, // 20MB
-    },
-    fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-      if (
-        file.mimetype == 'image/jpg' ||
-        file.mimetype == 'image/png' ||
-        file.mimetype == 'image/jpeg' ||
-        file.mimetype == 'image/heic' ||
-        file.mimetype == 'image/heif'
-      ) {
+/**
+ * Multer middleware using memory storage.
+ * File bytes are held in req.file.buffer — no disk writes.
+ * Upload to Cloudinary (or another service) in the controller.
+ *
+ * The `_folder` parameter is kept for backward-compatibility but ignored.
+ */
+export default function (_folder?: string) {
+  return multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+    fileFilter: (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+      if (ALLOWED_TYPES.includes(file.mimetype)) {
         cb(null, true);
       } else {
-        cb(new Error('Only jpg, png, jpeg format allowed!'));
+        cb(new Error('Only image files are allowed (jpg, png, webp, heic)'));
       }
     },
   });
-
-  return upload;
 }

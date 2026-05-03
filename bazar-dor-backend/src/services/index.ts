@@ -7,5 +7,6 @@ import * as productService from './product.service';
 import * as bazarService from './bazar.service';
 import * as priceService from './price.service';
 import * as alertService from './alert.service';
+import * as osmPlacesService from './osmPlaces.service';
 
-export { authService, emailService, tokenService, userService, tasksService, productService, bazarService, priceService, alertService };
+export { authService, emailService, tokenService, userService, tasksService, productService, bazarService, priceService, alertService, osmPlacesService };

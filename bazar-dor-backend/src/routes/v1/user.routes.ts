@@ -3,29 +3,19 @@ import auth from '../../middlewares/auth';
 import validate from '../../middlewares/validate';
 import * as userValidation from '../../validations/user.validation';
 import * as userController from '../../controllers/user.controller';
-import userFileUploadMiddleware from '../../middlewares/fileUpload';
-import convertHeicToPngMiddleware from '../../middlewares/converter';
+import fileUpload from '../../middlewares/fileUpload';
 
-const UPLOADS_FOLDER_USERS = './public/uploads/users';
-
-const uploadUsers = userFileUploadMiddleware(UPLOADS_FOLDER_USERS);
+const uploadUsers = fileUpload();
 
 const router = express.Router();
 
 router.route('/').get(auth('user'), userController.getUsers);
-
 router.route('/leaderboard').get(userController.getLeaderboard);
-
 router.route('/me/stats').get(auth('common'), userController.getMyStats);
 
 router
   .route('/:userId')
   .get(auth('common'), validate(userValidation.getUser), userController.getUser)
-  .patch(
-    auth('common'),
-    [uploadUsers.single('image')],
-    convertHeicToPngMiddleware(UPLOADS_FOLDER_USERS),
-    userController.updateUser
-  );
+  .patch(auth('common'), uploadUsers.single('image'), userController.updateUser);
 
 export default router;

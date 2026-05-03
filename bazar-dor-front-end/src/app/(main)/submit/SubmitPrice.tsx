@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { MapPin, ShoppingBag, CheckCircle2, Info, Navigation } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
+import { MapPin, ShoppingBag, CheckCircle2, Info, Navigation, Camera, X } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useGetProductsQuery } from '../../../store/api/productApi';
-import { useGetBazarsQuery } from '../../../store/api/bazarApi';
+import { useGetBazarsQuery, useGetNearbyBazarsQuery } from '../../../store/api/bazarApi';
 import { useSubmitPriceMutation } from '../../../store/api/priceApi';
 import { useAppSelector } from '../../../store/hooks';
 import { useUserLocation } from '../../../hooks/useUserLocation';
@@ -16,14 +17,24 @@ export function SubmitPrice() {
   const router = useRouter();
   const isAuthenticated = useAppSelector(s => s.auth.isAuthenticated);
 
-  const { data: productsRes, isLoading: loadingProducts } = useGetProductsQuery({ limit: 50 });
-  const { data: bazarsRes, isLoading: loadingBazars } = useGetBazarsQuery({ limit: 50 });
-  const [submitPrice, { isLoading: isSubmitting }] = useSubmitPriceMutation();
-
   const { location: userLocation, refresh: refreshLocation } = useUserLocation();
 
+  const { data: productsRes, isLoading: loadingProducts } = useGetProductsQuery({ limit: 50 });
+  const { data: bazarsRes, isLoading: loadingBazars1 } = useGetBazarsQuery(
+    { limit: 50 },
+    { skip: !!userLocation },
+  );
+  const { data: nearbyBazarsRes, isLoading: loadingBazars2 } = useGetNearbyBazarsQuery(
+    { lat: userLocation?.lat ?? 0, lng: userLocation?.lng ?? 0, radius: 10, limit: 50 },
+    { skip: !userLocation },
+  );
+  const [submitPrice, { isLoading: isSubmitting }] = useSubmitPriceMutation();
+
+  const loadingBazars = loadingBazars1 || loadingBazars2;
   const products = productsRes?.data?.attributes?.data || [];
-  const rawBazars = bazarsRes?.data?.attributes?.data || [];
+  const rawBazars = userLocation
+    ? (nearbyBazarsRes?.data?.attributes || [])
+    : (bazarsRes?.data?.attributes?.data || []);
 
   // Sort bazars by distance if user location is available
   const bazars = userLocation
@@ -42,6 +53,23 @@ export function SubmitPrice() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
+  // Proof photo (optional)
+  const [photoFile,    setPhotoFile]    = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+  const removePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    if (photoInputRef.current) photoInputRef.current.value = '';
+  };
+
   useEffect(() => {
     if (!formData.bazarId) {
       const saved = localStorage.getItem('defaultBazarId');
@@ -58,13 +86,17 @@ export function SubmitPrice() {
     }
     setError('');
     try {
-      await submitPrice({
-        productId: formData.productId,
-        bazarId: formData.bazarId,
-        price: parseFloat(formData.price),
-        visitType: formData.visitType,
-      }).unwrap();
+      const fd = new FormData();
+      fd.append('productId', formData.productId);
+      fd.append('bazarId',   formData.bazarId);
+      fd.append('price',     formData.price);
+      fd.append('visitType', formData.visitType);
+      if (photoFile) fd.append('photo', photoFile);
+
+      await submitPrice(fd).unwrap();
       setSubmitted(true);
+      setPhotoFile(null);
+      setPhotoPreview(null);
     } catch (err: any) {
       setError(err?.data?.message || 'সাবমিট ব্যর্থ হয়েছে');
     }
@@ -123,7 +155,7 @@ export function SubmitPrice() {
                 </div>
                 {userLocation ? (
                   <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <Navigation className="w-3 h-3" /> কাছে থেকে সাজানো
+                    <Navigation className="w-3 h-3" /> ১০ কিমির মধ্যে
                   </span>
                 ) : (
                   <button type="button" onClick={refreshLocation}
@@ -225,6 +257,34 @@ export function SubmitPrice() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Proof photo upload */}
+            <div className="bg-white rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-50 p-5">
+              <h2 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <Camera className="w-4 h-4 text-slate-400" /> ছবি যোগ করুন
+                <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">ঐচ্ছিক</span>
+              </h2>
+
+              {photoPreview ? (
+                <div className="relative rounded-2xl overflow-hidden">
+                  <Image src={photoPreview} alt="proof" width={400} height={200}
+                    className="w-full h-40 object-cover rounded-2xl" unoptimized />
+                  <button type="button" onClick={removePhoto}
+                    className="absolute top-2 right-2 w-7 h-7 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => photoInputRef.current?.click()}
+                  className="w-full h-28 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 text-slate-400 hover:border-emerald-300 hover:text-emerald-500 transition-colors bg-slate-50/50">
+                  <Camera className="w-6 h-6" />
+                  <span className="text-xs font-semibold">বাজারের ছবি তুলুন বা আপলোড করুন</span>
+                  <span className="text-[10px]">দাম প্রমাণ হিসেবে ব্যবহার হবে</span>
+                </button>
+              )}
+              <input ref={photoInputRef} type="file" accept="image/*" capture="environment"
+                onChange={handlePhotoSelect} className="hidden" />
             </div>
 
             <div className="bg-blue-50/50 rounded-[20px] p-4 border border-blue-100/50 flex gap-3">

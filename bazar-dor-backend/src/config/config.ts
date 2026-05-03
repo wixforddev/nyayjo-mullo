@@ -10,6 +10,10 @@ const envVarsSchema = Joi.object()
     PORT: Joi.number().default(3000),
     MONGODB_URL: Joi.string().required().description('Mongo DB url'),
     JWT_SECRET: Joi.string().required().description('JWT secret key'),
+    GOOGLE_PLACES_API_KEY: Joi.string().optional().description('Google Places API key for bazar geocaching'),
+    CLOUDINARY_CLOUD_NAME: Joi.string().required().description('Cloudinary cloud name'),
+    CLOUDINARY_API_KEY: Joi.string().required().description('Cloudinary API key'),
+    CLOUDINARY_API_SECRET: Joi.string().required().description('Cloudinary API secret'),
     JWT_ACCESS_EXPIRATION_MINUTES: Joi.number().default(30).description('minutes after which access tokens expire'),
     JWT_REFRESH_EXPIRATION_DAYS: Joi.number().default(30).description('days after which refresh tokens expire'),
     JWT_RESET_PASSWORD_EXPIRATION_MINUTES: Joi.number()
@@ -35,6 +39,7 @@ if (error) {
 export interface Config {
   env: string;
   port: number;
+  googlePlacesApiKey: string | undefined;
   mongoose: {
     url: string;
     options: {
@@ -65,6 +70,7 @@ export interface Config {
 const config: Config = {
   env: envVars.NODE_ENV,
   port: envVars.PORT,
+  googlePlacesApiKey: envVars.GOOGLE_PLACES_API_KEY,
   mongoose: {
     url: envVars.MONGODB_URL + (envVars.NODE_ENV === 'test' ? '-test' : ''),
     options: {

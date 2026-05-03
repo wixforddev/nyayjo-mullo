@@ -4,8 +4,12 @@ import response from '../config/response';
 import { productService } from '../services';
 import catchAsync from '../utils/catchAsync';
 import pick from '../utils/pick';
+import { uploadToCloudinary, deleteFromCloudinary } from '../config/cloudinary';
 
 const createProduct = catchAsync(async (req: Request, res: Response) => {
+  if ((req as any).file) {
+    req.body.image = await uploadToCloudinary((req as any).file.buffer, 'bazar-dor/products');
+  }
   const product = await productService.createProduct(req.body);
   res.status(httpStatus.CREATED).json(
     response({
@@ -50,6 +54,11 @@ const updateProduct = catchAsync(async (req: Request, res: Response) => {
   const productId = Array.isArray(req.params.productId)
     ? req.params.productId[0]
     : req.params.productId;
+  if ((req as any).file) {
+    const existing = await productService.getProductById(productId);
+    if (existing?.image) await deleteFromCloudinary(existing.image);
+    req.body.image = await uploadToCloudinary((req as any).file.buffer, 'bazar-dor/products');
+  }
   const product = await productService.updateProductById(productId, req.body);
   res.status(httpStatus.OK).json(
     response({

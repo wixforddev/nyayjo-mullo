@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Navigation, MapPin, Search } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useGetBazarsQuery } from '../../../store/api/bazarApi';
+import { useGetBazarsQuery, useGetNearbyBazarsQuery } from '../../../store/api/bazarApi';
 import { useGetHeatmapQuery } from '../../../store/api/priceApi';
 import { useGetProductsQuery } from '../../../store/api/productApi';
 import { useUserLocation } from '../../../hooks/useUserLocation';
@@ -34,14 +34,26 @@ export function Heatmap() {
 
   const { location: userLocation, refresh: refreshLocation, loading: locLoading } = useUserLocation();
 
-  const { data: bazarsRes,   isLoading: loadingBazars }   = useGetBazarsQuery({ limit: 100 });
+  // When location available: fetch nearby bazars (25km) — covers all bazars the user can realistically visit
+  // When no location: server-side text search so any bazar name can be found regardless of DB size
+  const { data: bazarsRes, isLoading: loadingBazars1 } = useGetBazarsQuery(
+    { search: searchQuery || undefined, limit: 100 },
+    { skip: !!userLocation },
+  );
+  const { data: nearbyBazarsRes, isLoading: loadingBazars2 } = useGetNearbyBazarsQuery(
+    { lat: userLocation?.lat ?? 0, lng: userLocation?.lng ?? 0, radius: 25, limit: 200 },
+    { skip: !userLocation },
+  );
+  const loadingBazars = loadingBazars1 || loadingBazars2;
   const { data: productsRes }                              = useGetProductsQuery({ limit: 50 });
   const { data: heatmapRes, isFetching: fetchingHeatmap } = useGetHeatmapQuery(
     selectedProductId,
     { skip: !selectedProductId }
   );
 
-  const rawBazars: any[] = bazarsRes?.data?.attributes?.data   || [];
+  const rawBazars: any[] = userLocation
+    ? (nearbyBazarsRes?.data?.attributes   || [])
+    : (bazarsRes?.data?.attributes?.data   || []);
   const products: any[]  = productsRes?.data?.attributes?.data || [];
   const heatmapData: any[] = heatmapRes?.data?.attributes      || [];
 

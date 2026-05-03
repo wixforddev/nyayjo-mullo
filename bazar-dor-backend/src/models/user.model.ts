@@ -8,7 +8,7 @@ import { PaginateResult } from "./plugins/paginate.plugin";
 interface UserDocument extends mongoose.Document {
   fullName: string;
   email: string;
-  image: { url: string; path: string };
+  image: string;
   password: string;
   role: string;
   rand: number;
@@ -59,9 +59,8 @@ const userSchema: any = new mongoose.Schema(
       },
     },
     image: {
-      type: Object,
-      required: [true, "Image is must be Required"],
-      default: { url: `/uploads/users/user.png`, path: "null" },
+      type: String,
+      default: '',
     },
     password: {
       type: String,

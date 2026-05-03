@@ -6,6 +6,7 @@ import { Price } from "../models";
 import ApiError from "../utils/ApiError";
 import catchAsync from "../utils/catchAsync";
 import pick from "../utils/pick";
+import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary";
 
 const createUser = catchAsync(async (req: Request, res: Response) => {
   const user = await userService.createUser(req.body);
@@ -59,13 +60,14 @@ const updateUser = catchAsync(async (req: Request, res: Response) => {
   const userId = Array.isArray(req.params.userId)
     ? req.params.userId[0]
     : req.params.userId;
-  const image: any = {};
+
   if ((req as any).file) {
-    image.url = "/uploads/users/" + (req as any).file.filename;
-    image.path = (req as any).file.path;
-  }
-  if ((req as any).file) {
-    req.body.image = image;
+    // Delete old Cloudinary image before uploading new one
+    const existing = await userService.getUserById(userId);
+    if (existing?.image) await deleteFromCloudinary(existing.image);
+
+    const url = await uploadToCloudinary((req as any).file.buffer, 'bazar-dor/users');
+    req.body.image = url;
   }
 
   const user = await userService.updateUserById(userId, req.body);

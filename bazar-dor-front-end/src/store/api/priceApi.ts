@@ -22,7 +22,12 @@ export const priceApi = baseApi.injectEndpoints({
       providesTags: ['Price'],
     }),
     submitPrice: builder.mutation({
-      query: (body) => ({ url: '/prices', method: 'POST', body }),
+      query: (formData: FormData) => ({
+        url: '/prices',
+        method: 'POST',
+        body: formData,
+        formData: true,
+      }),
       invalidatesTags: ['Price'],
     }),
     votePrice: builder.mutation({

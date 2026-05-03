@@ -4,8 +4,14 @@ import auth from '../../middlewares/auth';
 
 const router = express.Router();
 
-// Specific routes BEFORE /:bazarId
-router.get('/nearby', bazarController.getNearbyBazars);
+// ── Public ────────────────────────────────────────────────────────────────────
+router.get('/nearby',      bazarController.getNearbyBazars);
+
+// ── Admin — Google Places cache management ────────────────────────────────────
+router.post('/seed/cell',    auth('common'), bazarController.seedCell);
+router.get('/seed/status',   auth('common'), bazarController.getCacheStatus);
+
+// ── Authenticated CRUD ────────────────────────────────────────────────────────
 router.post('/add', auth('common'), bazarController.createBazar);
 
 router.route('/')

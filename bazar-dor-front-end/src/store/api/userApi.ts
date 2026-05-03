@@ -15,7 +15,13 @@ export const userApi = baseApi.injectEndpoints({
       providesTags: ['User'],
     }),
     updateProfile: builder.mutation({
-      query: ({ id, ...body }) => ({ url: `/users/${id}`, method: 'PATCH', body }),
+      query: ({ id, formData }: { id: string; formData: FormData }) => ({
+        url: `/users/${id}`,
+        method: 'PATCH',
+        body: formData,
+        // Do NOT set Content-Type — browser sets multipart/form-data with boundary automatically
+        formData: true,
+      }),
       invalidatesTags: ['User'],
     }),
   }),

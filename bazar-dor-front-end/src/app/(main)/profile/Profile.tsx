@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Bell, ChevronRight, LogOut, Settings, X, Medal, MapPin, Tag, CheckCircle2, Plus, AlertTriangle } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
@@ -191,8 +192,21 @@ export function Profile() {
       {/* Identity card + savings */}
       <div className="bg-white rounded-[24px] p-5 border border-slate-100 shadow-sm flex flex-col gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-teal-300 flex items-center justify-center text-white text-2xl font-black shadow-md shrink-0 select-none">
-            {(user?.fullName || (user as any)?.name || '?')[0]?.toUpperCase()}
+          {/* Avatar — Cloudinary photo or initial fallback */}
+          <div className="relative w-16 h-16 rounded-full shrink-0 shadow-md overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-300 flex items-center justify-center select-none">
+            {(user as any)?.image ? (
+              <Image
+                src={(user as any).image}
+                alt="profile"
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            ) : (
+              <span className="text-white text-2xl font-black">
+                {(user?.fullName || (user as any)?.name || '?')[0]?.toUpperCase()}
+              </span>
+            )}
           </div>
           <div>
             <h2 className="text-lg font-black text-slate-900 leading-tight">

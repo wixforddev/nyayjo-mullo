@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { MapPin, Minus, Plus, ChevronRight, Search, Car, ArrowRight, TrendingDown, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { MapPin, Minus, Plus, ChevronRight, Search, Car, ArrowRight, TrendingDown, CheckCircle2, AlertTriangle, Navigation } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { FoodRescue } from '@/components/FoodRescue';
-import { useGetBazarsQuery } from '../../../store/api/bazarApi';
+import { useGetBazarsQuery, useGetNearbyBazarsQuery } from '../../../store/api/bazarApi';
 import { useGetPricesQuery } from '../../../store/api/priceApi';
 import { useUserLocation } from '../../../hooks/useUserLocation';
 import { distanceKm } from '../../../lib/distance';
@@ -25,18 +25,43 @@ export function Planner() {
   const [activeTab, setActiveTab]               = useState(searchParams.get('tab') === 'rescue' ? 'rescue' : 'planner');
   const [selectedProducts, setSelectedProducts] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery]           = useState('');
+  const [bazarSearch, setBazarSearch]           = useState('');
   const [selectedBazarId, setSelectedBazarId]   = useState('');
   const [travelCost, setTravelCost]             = useState('');
 
-  const { location: userLocation }                        = useUserLocation();
-  const { data: bazarsRes,      isLoading: loadingBazars } = useGetBazarsQuery({ limit: 30 });
+  const { location: userLocation } = useUserLocation();
+
+  // When location available: nearby bazars within 25km (covers all reachable bazars)
+  // When no location: server-side text search so any bazar can be found regardless of DB size
+  const { data: bazarsRes, isLoading: loadingBazars1 } = useGetBazarsQuery(
+    { search: bazarSearch || undefined, limit: 50 },
+    { skip: !!userLocation },
+  );
+  const { data: nearbyBazarsRes, isLoading: loadingBazars2 } = useGetNearbyBazarsQuery(
+    { lat: userLocation?.lat ?? 0, lng: userLocation?.lng ?? 0, radius: 25, limit: 100 },
+    { skip: !userLocation },
+  );
+  const loadingBazars = loadingBazars1 || loadingBazars2;
+
   const { data: allPricesRes,   isFetching: loadingAllPrices } = useGetPricesQuery({ limit: 200 });
   const { data: bazarPricesRes, isFetching: loadingBazarPrices } = useGetPricesQuery(
     { bazarId: selectedBazarId, limit: 200 },
     { skip: !selectedBazarId }
   );
 
-  const bazars = bazarsRes?.data?.attributes?.data || [];
+  // Full list used for comparison and bazar name lookup
+  const bazars: any[] = userLocation
+    ? (nearbyBazarsRes?.data?.attributes || [])
+    : (bazarsRes?.data?.attributes?.data || []);
+
+  // Dropdown options: when location available, additionally filter by bazarSearch client-side
+  const bazarOptions = userLocation && bazarSearch
+    ? bazars.filter((b: any) =>
+        b.name?.toLowerCase().includes(bazarSearch.toLowerCase()) ||
+        b.nameBn?.includes(bazarSearch) ||
+        b.area?.toLowerCase().includes(bazarSearch.toLowerCase())
+      )
+    : bazars;
 
   useEffect(() => {
     const saved = localStorage.getItem('defaultBazarId');
@@ -265,9 +290,27 @@ export function Planner() {
 
               {/* Bazar selector */}
               <div className="px-4 pt-3 pb-2">
-                <label className="text-[11px] font-semibold text-slate-400 flex items-center gap-1 mb-1.5">
-                  <MapPin className="w-3 h-3" /> আপনার বাজার
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+                    <MapPin className="w-3 h-3" /> আপনার বাজার
+                  </label>
+                  {userLocation && (
+                    <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Navigation className="w-3 h-3" /> কাছের বাজার
+                    </span>
+                  )}
+                </div>
+                {/* Bazar search input */}
+                <div className="relative mb-1.5">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="বাজার খুঁজুন..."
+                    value={bazarSearch}
+                    onChange={e => setBazarSearch(e.target.value)}
+                    className="w-full h-9 pl-8 pr-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-300/30 focus:bg-white transition-colors"
+                  />
+                </div>
                 {loadingBazars ? (
                   <div className="h-11 bg-slate-100 rounded-xl animate-pulse" />
                 ) : (
@@ -275,7 +318,7 @@ export function Planner() {
                     <select value={selectedBazarId} onChange={e => selectBazar(e.target.value)}
                       className="w-full h-11 px-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-300/40 appearance-none text-sm font-medium">
                       <option value="">সব বাজার</option>
-                      {bazars.map((b: any) => (
+                      {bazarOptions.map((b: any) => (
                         <option key={b._id} value={b._id}>{b.nameBn || b.name}</option>
                       ))}
                     </select>
@@ -430,9 +473,27 @@ export function Planner() {
               <h2 className="text-lg font-bold text-[#064E3B]">প্রাথমিক তথ্য</h2>
 
               <div>
-                <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5 mb-1.5">
-                  <MapPin className="w-3.5 h-3.5" /> আপনার বাজার
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5" /> আপনার বাজার
+                  </label>
+                  {userLocation && (
+                    <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Navigation className="w-3 h-3" /> কাছের বাজার
+                    </span>
+                  )}
+                </div>
+                {/* Bazar search */}
+                <div className="relative mb-2">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="বাজার খুঁজুন..."
+                    value={bazarSearch}
+                    onChange={e => setBazarSearch(e.target.value)}
+                    className="w-full h-9 pl-9 pr-3 rounded-xl border border-slate-200 bg-slate-50/80 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-300/30 focus:bg-white transition-colors"
+                  />
+                </div>
                 <div className="relative">
                   {loadingBazars ? (
                     <div className="h-12 bg-slate-100 rounded-xl animate-pulse" />
@@ -441,7 +502,7 @@ export function Planner() {
                       <select value={selectedBazarId} onChange={e => selectBazar(e.target.value)}
                         className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white/50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-300/30 appearance-none text-sm">
                         <option value="">বাজার বেছে নিন</option>
-                        {bazars.map((b: any) => (
+                        {bazarOptions.map((b: any) => (
                           <option key={b._id} value={b._id}>{b.nameBn || b.name}</option>
                         ))}
                       </select>

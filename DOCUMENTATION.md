@@ -207,6 +207,153 @@ createdBy : ObjectId (ref: User) — manual alert এ admin এর id
 
 ---
 
+---
+
+### OpenStreetMap Bazar Geocaching System
+
+**License:** ODbL (Open Database License) — সম্পূর্ণ বিনামূল্যে, permanently store করা allowed।
+**Attribution:** App এ কোথাও `© OpenStreetMap contributors` লিখতে হবে।
+
+**Files:**
+- Service:    `src/services/osmPlaces.service.ts`
+- Model:      `src/models/bazarCacheCell.model.ts`
+- Script:     `src/scripts/seedBangladeshBazars.ts`
+- Controller: `src/controllers/bazar.controller.ts` → `seedCell`, `getCacheStatus`
+- Routes:     `POST /api/v1/bazars/seed/cell`, `GET /api/v1/bazars/seed/status`
+
+#### সমস্যা ও সমাধান
+
+Admin থেকে manually বাজার add করলে গ্রামের দিকের ছোট বাজার miss হয়।
+OpenStreetMap Overpass API দিয়ে user location এর কাছের সব বাজার automatically DB তে cache করা হয়।
+একবার cache হলে আর কোনো external API call নেই — সব নিজের DB থেকে serve হয়।
+কোনো API key বা credit card লাগে না।
+
+#### Grid-Based Cache Architecture
+
+```
+Bangladesh → 0.05° × 0.05° grid cell (~5.5km × 5.5km)
+প্রতিটি cell এর একটি unique gridKey: "23.80_90.40"
+
+User location → gridKey বের করা → DB check → নেই বা expire → Overpass API call → DB save
+```
+
+#### Cache Constants
+```ts
+RADIUS_M     = 5000      // 5km radius per Overpass query
+CACHE_TTL_MS = 90 দিন   // 90 দিন পরে cell refresh হয়
+GRID_STEP    = 0.05°     // ~5.5km grid resolution
+```
+
+#### Overpass Query (কী খোঁজা হয়)
+```
+node/way/relation with:
+  shop=marketplace          → OSM এ registered marketplace
+  amenity=marketplace       → OSM এ registered marketplace
+  name ~ "বাজার|হাট|Bazar|Market"  → নামে বাজার/হাট আছে এমন সব জায়গা
+```
+
+#### Flow: getNearbyBazars() যখন call হয়
+
+```
+Request: GET /api/v1/bazars/nearby?lat=23.81&lng=90.41
+
+Step 1 — Grid cell বের করা
+  gridKey = "23.80_90.40"   (lat/lng কে nearest 0.05° এ round)
+
+Step 2 — Cache check (BazarCacheCell collection)
+  cell আছে এবং fetchedAt < 90 দিন → DB থেকে সরাসরি return করো
+  cell নেই বা expire → Step 3
+
+Step 3 — Overpass API call (3টি mirror, failover আছে)
+  POST https://overpass-api.de/api/interpreter
+  Query: node+way+relation ["shop"="marketplace" OR name~"বাজার"] around 5km
+
+Step 4 — MongoDB upsert (placeId = "osm_node_12345" দিয়ে duplicate avoid)
+  Bazar.findOneAndUpdate({ placeId: "osm_node_..." }, { $set: {...} }, { upsert: true })
+
+Step 5 — BazarCacheCell update
+  { gridKey, fetchedAt: now, bazarCount: N, status: 'success'|'empty' }
+
+Step 6 — $nearSphere query (MongoDB 2dsphere index)
+  Bazar.find({ isActive: true, location: { $nearSphere: { maxDistance: 5000m } } })
+
+Return: distance সহ বাজার list (কাছ থেকে দূর sort)
+```
+
+#### Bazar Model নতুন Fields
+```ts
+source   : 'admin' | 'osm' | 'google'   // কোথা থেকে এল
+placeId  : string | null                  // OSM: "osm_node_123456" (sparse unique index)
+cachedAt : Date | null                    // কখন OSM থেকে আনা হয়েছে
+gridKey  : string | null                  // কোন grid cell এর data
+location : GeoJSON Point                  // [lng, lat] — 2dsphere index, pre-save auto-sync
+```
+
+#### BazarCacheCell Model
+```ts
+gridKey    : string                          // unique — "23.80_90.40"
+centerLat  : number
+centerLng  : number
+fetchedAt  : Date
+bazarCount : number                          // কতটি বাজার এই cell এ পাওয়া গেছে
+status     : 'success' | 'empty' | 'error'
+```
+
+#### Bangladesh-Wide Seeding Script (একবার run করলেই হবে)
+
+```bash
+# Dry run — শুধু cell count দেখাবে, কোনো API call নেই
+npm run seed:bazars:dry
+
+# Full seeding — পুরো Bangladesh seed করবে (~3-6 ঘণ্টা)
+npm run seed:bazars
+
+# Interrupted হলে resume করুন (আগের cell skip হবে)
+START_LAT=23.5 npm run seed:bazars
+
+# Cell delay কমাতে (Overpass server respectful usage: ≥1000ms)
+DELAY_MS=1500 npm run seed:bazars
+```
+
+**Bangladesh grid:**
+- Latitude:  20.74° — 26.63°
+- Longitude: 88.01° — 92.68°
+- মোট cells: ~11,000 (land + water) — land cells ~5,000-6,000
+- Estimated time: 3–6 ঘণ্টা (2s delay per cell)
+- **Cost: $0 (সম্পূর্ণ বিনামূল্যে)**
+
+#### Admin Endpoints
+```
+POST /api/v1/bazars/seed/cell
+Body: { "lat": 23.81, "lng": 90.41 }
+→ নির্দিষ্ট cell force-refresh (TTL ignore করে)
+
+GET /api/v1/bazars/seed/status?lat=23.81&lng=90.41
+→ cell এর cache status দেখায়
+```
+
+#### Non-blocking Design
+```ts
+// bazar.service.ts
+await osmPlacesService.ensureCellCached(lat, lng).catch(err => {
+  console.error('[BazarService] OSM cache-fill failed:', err?.message);
+});
+// Overpass fail করলেও user DB তে থাকা বাজার পাবে
+// প্রথম request একটু slow হতে পারে — পরেরগুলো instant (DB থেকে)
+```
+
+#### Overpass Mirror Failover
+```ts
+const OVERPASS_MIRRORS = [
+  'https://overpass-api.de/api/interpreter',     // primary
+  'https://overpass.kumi.systems/api/interpreter', // mirror 1
+  'https://lz4.overpass-api.de/api/interpreter',  // mirror 2
+];
+// একটি fail করলে পরেরটি try করে — higher availability
+```
+
+---
+
 ### DailySnapshot Logic
 1. সেদিনের (00:00–23:59) সব Price fetch করে
 2. productId.nameBn/name দিয়ে regex match: মুরগি, গরু, তেল, আলু, পেঁয়াজ

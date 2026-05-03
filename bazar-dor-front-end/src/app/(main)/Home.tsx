@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   MapPin, TrendingDown, TrendingUp, Clock, Search,
   ArrowRight, X, Navigation, CheckCircle2, ChevronRight, Store,
@@ -9,7 +10,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LineChart, Line, ResponsiveContainer, Tooltip, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { PromoBanner } from '@/components/PromoBanner';
-import { useGetBazarsQuery } from '../../store/api/bazarApi';
+import { useGetBazarsQuery, useGetNearbyBazarsQuery } from '../../store/api/bazarApi';
 import { useGetAlertsQuery } from '../../store/api/alertApi';
 import { useGetPricesQuery, useVotePriceMutation, useMarkStockOutMutation, useGetPriceHistoryQuery } from '../../store/api/priceApi';
 import { useGetDailySnapshotsQuery } from '../../store/api/snapshotApi';
@@ -63,7 +64,15 @@ export function Home() {
   };
   const { location: userLocation, refresh: refreshLocation } = useUserLocation();
 
-  const { data: bazarsRes, isLoading: loadingBazars } = useGetBazarsQuery({ limit: 50 });
+  const { data: bazarsRes, isLoading: loadingBazars1 } = useGetBazarsQuery(
+    { limit: 50 },
+    { skip: !!userLocation },
+  );
+  const { data: nearbyBazarsRes, isLoading: loadingBazars2 } = useGetNearbyBazarsQuery(
+    { lat: userLocation?.lat ?? 0, lng: userLocation?.lng ?? 0, radius: 10, limit: 50 },
+    { skip: !userLocation },
+  );
+  const loadingBazars = loadingBazars1 || loadingBazars2;
   const { data: alertsRes }       = useGetAlertsQuery({ limit: 10 });
   const { data: localAlertsRes }  = useGetAlertsQuery(
     { bazarId: selectedBazarId, limit: 5 },
@@ -97,20 +106,19 @@ export function Home() {
   const [votePrice]    = useVotePriceMutation();
   const [markStockOut] = useMarkStockOutMutation();
 
-  const bazars       = bazarsRes?.data?.attributes?.data      || [];
+  const bazars       = userLocation
+    ? (nearbyBazarsRes?.data?.attributes || [])
+    : (bazarsRes?.data?.attributes?.data || []);
   const globalAlerts = (alertsRes?.data?.attributes?.data     || []).filter((a: any) => !a.bazarId);
   const localAlerts  = localAlertsRes?.data?.attributes?.data || [];
   const alerts       = [...localAlerts, ...globalAlerts];
   const prices       = pricesRes?.data?.attributes?.data      || [];
 
   const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-  const NEARBY_KM  = 10;
 
-  // Bazars within 10km (or all if no location)
+  // When location available, all returned bazars are already within 10km
   const nearbyBazarIds = userLocation
-    ? new Set(bazars
-        .filter((b: any) => b.lat && b.lng && distanceKm(userLocation.lat, userLocation.lng, b.lat, b.lng) <= NEARBY_KM)
-        .map((b: any) => b._id))
+    ? new Set(bazars.map((b: any) => b._id))
     : null;
 
   const recentAllPrices = (recentPricesRes?.data?.attributes?.data || [])
@@ -645,6 +653,16 @@ export function Home() {
                 <div className="bg-amber-50 rounded-[24px] p-5 text-center border border-amber-100">
                   <p className="text-sm text-amber-700 font-medium">এই বাজারে এখনো দাম সাবমিট হয়নি।</p>
                   <Link href="/submit" className="inline-block mt-3 bg-[#064E3B] text-white px-5 py-2.5 rounded-xl text-sm font-bold">দাম যোগ করুন</Link>
+                </div>
+              )}
+
+              {/* Proof photo */}
+              {selectedProductPrice?.photoUrl && (
+                <div className="bg-white rounded-[24px] overflow-hidden border border-slate-50 shadow-sm">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-4 pt-4 pb-2">প্রমাণ ছবি</p>
+                  <div className="relative w-full h-44">
+                    <Image src={selectedProductPrice.photoUrl} alt="দামের প্রমাণ" fill className="object-cover" unoptimized />
+                  </div>
                 </div>
               )}
 

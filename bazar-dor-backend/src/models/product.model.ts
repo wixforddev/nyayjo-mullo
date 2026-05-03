@@ -7,6 +7,7 @@ interface ProductDocument extends mongoose.Document {
   nameBn: string;
   unit: string;
   icon: string;
+  image: string;
   category: "vegetable" | "fish" | "meat" | "dairy" | "grain" | "oil" | "spice" | "pulse" | "other"
   defaultPrice: number;
   isActive: boolean;
@@ -38,6 +39,10 @@ const productSchema = new mongoose.Schema<ProductDocument, ProductModel>(
     icon: {
       type: String,
       default: "🛒",
+    },
+    image: {
+      type: String,
+      default: '',
     },
   category: {
   type: String,

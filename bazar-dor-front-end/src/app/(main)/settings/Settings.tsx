@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Camera } from 'lucide-react';
+import Image from 'next/image';
 import { useAppSelector, useAppDispatch } from '../../../store/hooks';
 import { updateUser, logout } from '../../../store/slices/authSlice';
 import { useUpdateProfileMutation } from '../../../store/api/userApi';
@@ -17,17 +18,21 @@ export function Settings() {
   const [flashMsg, setFlashMsg]       = useState<{type: 'ok'|'err'; text: string} | null>(null);
 
   const closeModal = () => setActiveModal(null);
-
-  const showFlash = (type: 'ok'|'err', text: string) => {
+  const showFlash  = (type: 'ok'|'err', text: string) => {
     setFlashMsg({ type, text });
     setTimeout(() => setFlashMsg(null), 3000);
   };
 
-  // Profile edit form state — initialised from Redux user
-  const [fullName, setFullName]   = useState('');
-  const [phone, setPhone]         = useState('');
-  const [address, setAddress]     = useState('');
+  // Profile form state
+  const [fullName,   setFullName]   = useState('');
+  const [phone,      setPhone]      = useState('');
+  const [address,    setAddress]    = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
+
+  // Image preview state
+  const [imageFile,    setImageFile]    = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Delete account state
   const [deletePassword, setDeletePassword] = useState('');
@@ -42,16 +47,44 @@ export function Settings() {
       setPhone(user.phone || '');
       setAddress(user.address || '');
       setDateOfBirth(user.dataOfBirth || '');
+      setImageFile(null);
+      setImagePreview(null);
     }
     if (activeModal !== 'delete') setDeletePassword('');
   }, [activeModal, user]);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
 
   const handleProfileSave = async () => {
     if (!user?.id && !user?._id) return;
     try {
       const id = user.id || user._id;
-      await updateProfile({ id, fullName, phone, address, dataOfBirth: dateOfBirth }).unwrap();
-      dispatch(updateUser({ fullName, phone, address, dataOfBirth: dateOfBirth }));
+
+      // Always send as FormData so the image file (if any) can be attached
+      const fd = new FormData();
+      fd.append('fullName',    fullName);
+      fd.append('phone',       phone);
+      fd.append('address',     address);
+      fd.append('dataOfBirth', dateOfBirth);
+      if (imageFile) fd.append('image', imageFile);
+
+      const result = await updateProfile({ id, formData: fd }).unwrap();
+
+      // Update Redux store — include new image URL if server returned it
+      const updatedImage = result?.data?.image || result?.data?.user?.image;
+      dispatch(updateUser({
+        fullName,
+        phone,
+        address,
+        dataOfBirth: dateOfBirth,
+        ...(updatedImage && { image: updatedImage }),
+      }));
+
       closeModal();
       showFlash('ok', 'প্রোফাইল আপডেট হয়েছে');
     } catch (err: any) {
@@ -69,6 +102,9 @@ export function Settings() {
       showFlash('err', err?.data?.message || 'অ্যাকাউন্ট মুছতে সমস্যা হয়েছে');
     }
   };
+
+  const avatarUrl = typeof user?.image === 'string' ? user.image : '';
+  const initials  = (user?.fullName || 'U').charAt(0).toUpperCase();
 
   return (
     <div className="min-h-screen bg-[#FAFCFC] p-4 font-sans text-slate-800 pb-20 relative">
@@ -99,7 +135,14 @@ export function Settings() {
             <div onClick={() => setActiveModal('editProfile')}
               className="flex items-center justify-between p-4 border-b border-slate-50 active:bg-slate-50 transition cursor-pointer">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 text-lg">👤</div>
+                {/* Avatar */}
+                <div className="relative w-10 h-10 rounded-full overflow-hidden bg-emerald-100 flex items-center justify-center shrink-0">
+                  {avatarUrl ? (
+                    <Image src={avatarUrl} alt="profile" fill className="object-cover" unoptimized />
+                  ) : (
+                    <span className="text-lg font-bold text-emerald-700">{initials}</span>
+                  )}
+                </div>
                 <div>
                   <span className="font-semibold text-slate-700 block">প্রোফাইল এডিট করুন</span>
                   <span className="text-xs text-slate-400">{user?.fullName || '—'}</span>
@@ -153,6 +196,45 @@ export function Settings() {
             {activeModal === 'editProfile' && (
               <div>
                 <h2 className="text-xl font-bold text-slate-800 mb-5">প্রোফাইল আপডেট</h2>
+
+                {/* Profile Photo Upload */}
+                <div className="flex flex-col items-center mb-5">
+                  <div className="relative w-24 h-24 rounded-full overflow-hidden bg-emerald-100 flex items-center justify-center mb-3 border-2 border-white shadow-md">
+                    {imagePreview ? (
+                      <Image src={imagePreview} alt="preview" fill className="object-cover" unoptimized />
+                    ) : avatarUrl ? (
+                      <Image src={avatarUrl} alt="profile" fill className="object-cover" unoptimized />
+                    ) : (
+                      <span className="text-3xl font-bold text-emerald-700">{initials}</span>
+                    )}
+                    {/* Camera overlay */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 active:opacity-100 transition-opacity rounded-full"
+                    >
+                      <Camera className="w-6 h-6 text-white" />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full hover:bg-emerald-100 transition-colors"
+                  >
+                    ছবি পরিবর্তন করুন
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+                  {imageFile && (
+                    <p className="text-[11px] text-slate-400 mt-1">{imageFile.name}</p>
+                  )}
+                </div>
+
                 <div className="space-y-3">
                   <div>
                     <label className="text-xs font-bold text-slate-500 mb-1 block">পুরো নাম</label>
@@ -199,7 +281,7 @@ export function Settings() {
                   disabled={updating}
                   className="w-full mt-5 bg-emerald-600 text-white font-bold py-3.5 rounded-xl active:scale-95 transition-transform disabled:opacity-60 flex items-center justify-center gap-2"
                 >
-                  {updating ? <><Loader2 className="w-4 h-4 animate-spin" /> সেভ হচ্ছে...</> : 'সেভ করুন'}
+                  {updating ? <><Loader2 className="w-4 h-4 animate-spin" /> আপলোড হচ্ছে...</> : 'সেভ করুন'}
                 </button>
               </div>
             )}
