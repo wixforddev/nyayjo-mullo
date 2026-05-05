@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Calendar, PlusCircle, User, Activity, Home, Map, Info, ShieldCheck, LogIn, Bell } from 'lucide-react';
+import { Calendar, PlusCircle, User, Home, Map, Info, ShieldCheck, LogIn, Bell } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { locationRequested, locationResolved, locationFailed } from '../store/slices/locationSlice';
 import { useUpdateProfileMutation } from '../store/api/userApi';
@@ -102,8 +103,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
             'md:justify-center md:px-3 md:py-5',
             'lg:justify-start lg:px-6 lg:py-6',
           )}>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#064E3B] to-[#10B981] flex items-center justify-center shadow-lg shadow-emerald-900/20 shrink-0">
-              <Activity className="w-5 h-5 text-white" strokeWidth={2} />
+            <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 shadow-lg shadow-emerald-900/20">
+              <Image src="/images/logo.png" alt="বাজার দর" width={40} height={40} className="w-full h-full object-cover" />
             </div>
             <span className="hidden lg:block font-bold text-xl text-[#064E3B] tracking-tight whitespace-nowrap">
               বাজার দর
@@ -230,8 +231,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <header className="px-4 md:px-6 lg:px-8 py-4 md:py-5 flex items-center justify-between shrink-0">
             {/* Mobile-only logo */}
             <div className="flex items-center gap-2 md:hidden">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#064E3B] to-[#10B981] flex items-center justify-center shadow-lg shadow-emerald-900/20">
-                <Activity className="w-4 h-4 text-white" strokeWidth={2} />
+              <div className="w-9 h-9 rounded-full overflow-hidden shadow-lg shadow-emerald-900/20">
+                <Image src="/images/logo.png" alt="বাজার দর" width={36} height={36} className="w-full h-full object-cover" />
               </div>
               <span className="font-bold text-lg text-[#064E3B] tracking-tight">বাজার দর</span>
             </div>
