@@ -14,7 +14,7 @@ export const userApi = baseApi.injectEndpoints({
       query: (params?: any) => ({ url: '/users', params }),
       providesTags: ['User'],
     }),
-    updateProfile: builder.mutation({
+    updateProfile: builder.mutation<any, any>({
       query: ({ id, formData, ...rest }: { id: string; formData?: FormData } & Record<string, any>) => {
         if (formData) {
           return { url: `/users/${id}`, method: 'PATCH', body: formData, formData: true };
