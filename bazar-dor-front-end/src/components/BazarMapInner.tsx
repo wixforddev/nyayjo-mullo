@@ -14,7 +14,7 @@ export interface BazarMapBazar {
   isActive?: boolean;
 }
 
-interface Props {
+export interface BazarMapProps {
   bazars: BazarMapBazar[];
   userLocation: { lat: number; lng: number } | null;
   selectedBazarId?: string;
@@ -89,7 +89,7 @@ export default function BazarMapInner({
   selectedBazarId,
   onBazarSelect,
   height = '420px',
-}: Props) {
+}: BazarMapProps) {
   const containerRef  = useRef<HTMLDivElement>(null);
   const mapRef        = useRef<L.Map | null>(null);
   const markersRef    = useRef<Record<string, L.Marker>>({});

@@ -1,6 +1,6 @@
 'use client';
 import dynamic from 'next/dynamic';
-import type { HeatmapBazar, HeatmapPoint } from './HeatmapMapInner';
+import type { HeatmapBazar, HeatmapPoint, HeatmapMapProps } from './HeatmapMapInner';
 
 const HeatmapMapInner = dynamic(() => import('./HeatmapMapInner'), {
   ssr: false,
@@ -16,6 +16,6 @@ const HeatmapMapInner = dynamic(() => import('./HeatmapMapInner'), {
 
 export type { HeatmapBazar, HeatmapPoint };
 
-export default function HeatmapMap(props: Parameters<typeof HeatmapMapInner>[0]) {
+export default function HeatmapMap(props: HeatmapMapProps) {
   return <HeatmapMapInner {...props} />;
 }

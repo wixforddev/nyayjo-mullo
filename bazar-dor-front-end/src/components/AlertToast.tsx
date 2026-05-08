@@ -6,6 +6,7 @@ import { useSocket } from '../hooks/useSocket';
 
 interface ToastAlert {
   id: string;
+  alertId?: string;
   type: string;
   severity: string;
   message: string;

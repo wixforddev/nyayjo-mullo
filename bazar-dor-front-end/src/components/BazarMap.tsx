@@ -1,6 +1,6 @@
 'use client';
 import dynamic from 'next/dynamic';
-import type { BazarMapBazar } from './BazarMapInner';
+import type { BazarMapBazar, BazarMapProps } from './BazarMapInner';
 
 // Dynamic import — Leaflet cannot run on the server
 const BazarMapInner = dynamic(() => import('./BazarMapInner'), {
@@ -18,6 +18,6 @@ const BazarMapInner = dynamic(() => import('./BazarMapInner'), {
 
 export type { BazarMapBazar };
 
-export default function BazarMap(props: Parameters<typeof BazarMapInner>[0]) {
+export default function BazarMap(props: BazarMapProps) {
   return <BazarMapInner {...props} />;
 }

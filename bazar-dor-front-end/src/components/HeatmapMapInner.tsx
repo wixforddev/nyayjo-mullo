@@ -124,7 +124,7 @@ const bazarMarkerIcon = (tier: Tier, price: number | null, selected: boolean) =>
   });
 };
 
-interface Props {
+export interface HeatmapMapProps {
   bazars: HeatmapBazar[];
   heatmapData: HeatmapPoint[];
   userLocation: { lat: number; lng: number } | null;
@@ -135,7 +135,7 @@ interface Props {
 
 export default function HeatmapMapInner({
   bazars, heatmapData, userLocation, selectedBazarId, onBazarSelect, height = '100%',
-}: Props) {
+}: HeatmapMapProps) {
   const containerRef  = useRef<HTMLDivElement>(null);
   const mapRef        = useRef<L.Map | null>(null);
   const markersRef    = useRef<Record<string, L.Marker>>({});
