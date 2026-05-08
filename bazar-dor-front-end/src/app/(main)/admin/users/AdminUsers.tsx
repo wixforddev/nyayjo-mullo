@@ -37,7 +37,9 @@ export function AdminUsers() {
 
   const handleRoleUpdate = async () => {
     if (!editingId) return;
-    await updateProfile({ id: editingId, role: editRole }).unwrap();
+    const fd = new FormData();
+    fd.append('role', editRole);
+    await updateProfile({ id: editingId, formData: fd }).unwrap();
     setEditingId(null);
   };
 
