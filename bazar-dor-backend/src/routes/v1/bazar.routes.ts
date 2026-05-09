@@ -5,22 +5,20 @@ import auth from '../../middlewares/auth';
 const router = express.Router();
 
 // ── Public ────────────────────────────────────────────────────────────────────
-router.get('/nearby',      bazarController.getNearbyBazars);
-
-// ── Admin — Google Places cache management ────────────────────────────────────
-router.post('/seed/cell',    auth('common'), bazarController.seedCell);
-router.get('/seed/status',   auth('common'), bazarController.getCacheStatus);
-
-// ── Authenticated CRUD ────────────────────────────────────────────────────────
-router.post('/add', auth('common'), bazarController.createBazar);
+router.get('/nearby', bazarController.getNearbyBazars);
 
 router.route('/')
-  .get(auth('common'), bazarController.getBazars)
+  .get(bazarController.getBazars)
   .post(auth('common'), bazarController.createBazar);
 
 router.route('/:bazarId')
-  .get(auth('common'), bazarController.getBazar)
+  .get(bazarController.getBazar)
   .put(auth('common'), bazarController.updateBazar)
   .delete(auth('common'), bazarController.deleteBazar);
+
+// ── Admin — Google Places cache management ────────────────────────────────────
+router.post('/seed/cell',  auth('common'), bazarController.seedCell);
+router.get('/seed/status', auth('common'), bazarController.getCacheStatus);
+router.post('/add',        auth('common'), bazarController.createBazar);
 
 export default router;

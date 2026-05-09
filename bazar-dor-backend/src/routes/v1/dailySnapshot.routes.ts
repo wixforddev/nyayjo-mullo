@@ -4,8 +4,8 @@ import auth from '../../middlewares/auth';
 
 const router = express.Router();
 
-router.get('/',          auth('common'), snapshotController.getSnapshots);
-router.get('/:date',     auth('common'), snapshotController.getSnapshotByDate);
+router.get('/',          snapshotController.getSnapshots);
+router.get('/:date',     snapshotController.getSnapshotByDate);
 router.post('/trigger',  auth('admin'),  snapshotController.triggerSnapshot);
 
 export default router;

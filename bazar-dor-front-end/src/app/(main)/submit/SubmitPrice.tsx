@@ -102,20 +102,6 @@ export function SubmitPrice() {
     }
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
-        <div className="text-6xl">🔒</div>
-        <h2 className="text-xl font-bold text-slate-800">দাম সাবমিট করতে লগইন করুন</h2>
-        <p className="text-slate-500 text-sm text-center">আপনার কমিউনিটিকে সাহায্য করুন সঠিক দাম শেয়ার করে</p>
-        <div className="flex gap-3">
-          <Link href="/login" className="bg-[#064E3B] text-white px-6 py-3 rounded-xl font-bold">লগইন করুন</Link>
-          <Link href="/register" className="bg-white border border-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold">রেজিস্ট্রেশন</Link>
-        </div>
-      </div>
-    );
-  }
-
   if (submitted) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 animate-in zoom-in-95 duration-500">
@@ -137,6 +123,19 @@ export function SubmitPrice() {
         <h1 className="text-2xl font-bold text-[#064E3B]">দাম যোগ করুন</h1>
         <p className="text-slate-500 text-sm mt-1">আপনার কমিউনিটিকে সাহায্য করুন সঠিক দাম শেয়ার করে</p>
       </div>
+
+      {!isAuthenticated && (
+        <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl shrink-0">🔑</span>
+            <p className="text-sm font-medium text-amber-800">দাম সাবমিট করতে লগইন করুন</p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Link href="/login" className="bg-[#064E3B] text-white px-4 py-1.5 rounded-xl text-sm font-bold">লগইন</Link>
+            <Link href="/register" className="bg-white border border-slate-200 text-slate-700 px-4 py-1.5 rounded-xl text-sm font-bold">রেজিস্ট্রেশন</Link>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-600 font-medium">{error}</div>

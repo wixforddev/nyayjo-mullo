@@ -594,9 +594,12 @@ export function Home() {
                 <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-slate-50 mb-4">
                   <h3 className="text-xs font-bold text-slate-400 mb-4 uppercase tracking-wider text-center">আপনার মতামত দিন</h3>
                   {!isAuthenticated ? (
-                    <div className="text-center py-2">
-                      <p className="text-sm text-slate-500 mb-3">ভোট দিতে লগইন করুন</p>
-                      <Link href="/login" className="bg-[#064E3B] text-white px-5 py-2.5 rounded-xl font-bold text-sm">লগইন করুন</Link>
+                    <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100 text-center">
+                      <p className="text-sm font-medium text-amber-800 mb-3">🔑 ভোট দিতে লগইন করুন</p>
+                      <div className="flex gap-2 justify-center">
+                        <Link href="/login" className="bg-[#064E3B] text-white px-5 py-2.5 rounded-xl font-bold text-sm">লগইন</Link>
+                        <Link href="/register" className="bg-white border border-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-bold text-sm">রেজিস্ট্রেশন</Link>
+                      </div>
                     </div>
                   ) : (() => {
                     const hasVoted = !!(selectedProductPrice?._id && votedPriceIds.has(selectedProductPrice._id));

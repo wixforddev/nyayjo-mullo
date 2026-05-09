@@ -257,16 +257,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <Info className="w-5 h-5" strokeWidth={1.5} />
               </button>
 
-              {/* Login button (only when not logged in) */}
-              {!user && (
-                <Link
-                  href="/login"
-                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#064E3B] to-[#10B981] text-white text-sm font-bold shadow-md shadow-emerald-900/15 hover:shadow-lg hover:shadow-emerald-900/25 active:scale-95 transition-all"
-                >
-                  <LogIn className="w-4 h-4" strokeWidth={2} />
-                  <span>লগইন</span>
-                </Link>
-              )}
             </div>
           </header>
 

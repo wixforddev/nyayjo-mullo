@@ -7,13 +7,16 @@ const upload = fileUpload();
 
 const router = express.Router();
 
-// photo is optional — multer won't error if field is missing
+// Public read routes (no auth required)
+router.route('/').get(priceController.getPrices);
+router.route('/basket').get(priceController.getBasket);
+router.route('/heatmap').get(priceController.getHeatmap);
+router.route('/history/:productId').get(priceController.getPriceHistory);
+router.route('/:priceId').get(priceController.getPrice);
+
+// Auth required for write operations
 router.route('/').post(auth('common'), upload.single('photo'), priceController.createPrice);
-router.route('/').get(auth('common'), priceController.getPrices);
-router.route('/basket').get(auth('common'), priceController.getBasket);
-router.route('/heatmap').get(auth('common'), priceController.getHeatmap);
-router.route('/history/:productId').get(auth('common'), priceController.getPriceHistory);
-router.route('/:priceId').get(auth('common'), priceController.getPrice).delete(auth('common'), priceController.deletePrice);
+router.route('/:priceId').delete(auth('common'), priceController.deletePrice);
 router.route('/:priceId/vote').post(auth('common'), priceController.votePrice);
 router.route('/:priceId/stock-out').post(auth('common'), priceController.markStockOut);
 

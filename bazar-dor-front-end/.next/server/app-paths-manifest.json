@@ -1,24 +1,5 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/(main)/alerts/page": "app/(main)/alerts/page.js",
-  "/(main)/change-password/page": "app/(main)/change-password/page.js",
-  "/(main)/heatmap/page": "app/(main)/heatmap/page.js",
-  "/(main)/more/page": "app/(main)/more/page.js",
   "/(main)/page": "app/(main)/page.js",
-  "/(main)/products/page": "app/(main)/products/page.js",
-  "/(main)/planner/page": "app/(main)/planner/page.js",
-  "/(main)/ranking/page": "app/(main)/ranking/page.js",
-  "/(main)/profile/page": "app/(main)/profile/page.js",
-  "/(main)/settings/page": "app/(main)/settings/page.js",
-  "/(main)/submit/page": "app/(main)/submit/page.js",
-  "/forgot-password/page": "app/forgot-password/page.js",
-  "/(main)/result/page": "app/(main)/result/page.js",
   "/login/page": "app/login/page.js",
-  "/register/page": "app/register/page.js",
-  "/(main)/admin/alerts/page": "app/(main)/admin/alerts/page.js",
-  "/(main)/admin/users/page": "app/(main)/admin/users/page.js",
-  "/(main)/admin/bazars/page": "app/(main)/admin/bazars/page.js",
-  "/(main)/admin/prices/page": "app/(main)/admin/prices/page.js",
-  "/(main)/admin/page": "app/(main)/admin/page.js",
-  "/(main)/admin/products/page": "app/(main)/admin/products/page.js"
+  "/(main)/heatmap/page": "app/(main)/heatmap/page.js"
 }
