@@ -315,40 +315,33 @@ export function Home() {
 
   return (
     <div className="pb-24 lg:pb-12">
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 items-start">
 
         {/* ── Left Column ── */}
-        <div className="flex-1 flex flex-col gap-4 min-w-0">
+        <div className="flex-1 flex flex-col gap-3 lg:gap-4 min-w-0 w-full">
 
           {/* Alert Banner */}
           {topAlert ? (
             <Link href="/alerts" className="block">
-              <div className="bg-rose-50/80 backdrop-blur-md border border-rose-100 rounded-2xl p-4 flex items-start gap-3 hover:bg-rose-100/80 transition-colors relative overflow-hidden">
-                <div className="absolute inset-0 border-2 border-rose-200/50 rounded-2xl animate-pulse pointer-events-none" />
-                <span className="text-xl shrink-0 mt-0.5">⚠️</span>
+              <div className="bg-rose-50/80 border border-rose-100 rounded-2xl p-3.5 flex items-start gap-3 active:bg-rose-100/80 transition-colors relative overflow-hidden">
+                <span className="text-lg shrink-0 mt-0.5">⚠️</span>
                 <div className="flex-1 min-w-0">
-                  {/* local alert হলে বাজারের নাম দেখাও */}
-                  {topAlert.bazarId && (
-                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wide mb-0.5">
-                      📍 {topAlert.bazarId?.nameBn || topAlert.bazarId?.name}
-                    </p>
-                  )}
-                  {!topAlert.bazarId && (
-                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wide mb-0.5">
-                      🌐 সারাদেশে
-                    </p>
+                  {topAlert.bazarId ? (
+                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wide mb-0.5">📍 {topAlert.bazarId?.nameBn || topAlert.bazarId?.name}</p>
+                  ) : (
+                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wide mb-0.5">🌐 সারাদেশে</p>
                   )}
                   <h3 className="text-sm font-bold text-rose-800 leading-tight">{topAlert.messageBn || topAlert.message}</h3>
                 </div>
-                <span className="shrink-0 text-rose-400 text-lg mt-1">→</span>
+                <ChevronRight className="shrink-0 text-rose-300 w-4 h-4 mt-0.5" />
               </div>
             </Link>
           ) : (
-            <div className="bg-emerald-50/80 backdrop-blur-md border border-emerald-100 rounded-2xl p-4 flex items-center gap-3">
-              <span className="text-xl shrink-0">✅</span>
-              <div>
+            <div className="bg-emerald-50/80 border border-emerald-100 rounded-2xl p-3.5 flex items-center gap-3">
+              <span className="text-lg shrink-0">✅</span>
+              <div className="min-w-0">
                 <h3 className="text-sm font-bold text-emerald-800">বাজারের দাম স্বাভাবিক আছে</h3>
-                <p className="text-xs text-emerald-600 mt-0.5">এই মুহূর্তে কোনো অস্বাভাবিক মূল্য বৃদ্ধি পাওয়া যায়নি।</p>
+                <p className="text-xs text-emerald-600 mt-0.5 hidden sm:block">এই মুহূর্তে কোনো অস্বাভাবিক মূল্য বৃদ্ধি পাওয়া যায়নি।</p>
               </div>
             </div>
           )}
@@ -370,27 +363,27 @@ export function Home() {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
+            <div className="flex items-center gap-1 text-[10px] text-slate-400">
               <Clock className="w-3 h-3" strokeWidth={1.5} />
               <span>লাইভ</span>
-              <ChevronRight className="w-4 h-4 ml-1 text-slate-300" />
+              <ChevronRight className="w-4 h-4 text-slate-300" />
             </div>
           </button>
 
           {/* Hero Card */}
-          <div className="glass-card p-6 relative overflow-hidden group">
-            <div className="absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-br from-emerald-100 to-teal-50 rounded-full blur-2xl opacity-60 group-hover:scale-110 transition-transform duration-700" />
-            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:gap-8 gap-6">
-              <div className="flex-1">
-                {/* Bazar selector */}
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/60 border border-white/80 shadow-sm mb-4 relative">
-                  <MapPin className="w-3.5 h-3.5 text-[#10B981]" strokeWidth={2} />
+          <div className="glass-card p-4 sm:p-6 relative overflow-hidden">
+            <div className="absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-br from-emerald-100 to-teal-50 rounded-full blur-2xl opacity-60 pointer-events-none" />
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:gap-8 gap-4">
+              <div className="flex-1 min-w-0">
+                {/* Bazar selector — full width on mobile */}
+                <div className="w-full flex items-center gap-2 bg-white/70 border border-slate-200/80 rounded-xl px-3 py-2 mb-3 shadow-sm">
+                  <MapPin className="w-4 h-4 text-[#10B981] shrink-0" strokeWidth={2} />
                   {loadingBazars ? (
-                    <span className="text-xs text-slate-400">লোড হচ্ছে...</span>
+                    <span className="text-xs text-slate-400 flex-1">লোড হচ্ছে...</span>
                   ) : (
                     <select value={selectedBazarId} onChange={handleBazarChange}
-                      className="text-xs font-medium text-slate-600 bg-transparent border-none focus:outline-none appearance-none pr-4 cursor-pointer">
-                      <option value="">📍 সব বাজার (কাছের)</option>
+                      className="flex-1 min-w-0 text-sm font-medium text-slate-700 bg-transparent border-none focus:outline-none appearance-none cursor-pointer">
+                      <option value="">সব বাজার (কাছের)</option>
                       {sortedBazars.map((b: any) => {
                         const dist = getBazarDistance(b);
                         return (
@@ -401,105 +394,104 @@ export function Home() {
                       })}
                     </select>
                   )}
-                  <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 rotate-90 pointer-events-none" />
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400 rotate-90 shrink-0 pointer-events-none" />
                 </div>
-                <h1 className="text-3xl font-bold text-[#064E3B] leading-tight mb-2">আশেপাশের<br />সঠিক দাম জানুন</h1>
+
+                <h1 className="text-2xl sm:text-3xl font-bold text-[#064E3B] leading-tight mb-2">
+                  আশেপাশের সঠিক দাম জানুন
+                </h1>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm text-slate-500 flex items-center gap-1.5">
-                    <Store className="w-4 h-4 text-[#10B981]" />
-                    {currentBazar ? (currentBazar.nameBn || currentBazar.name) : 'আপনার এলাকা'} এর বাজার দর
+                  <p className="text-sm text-slate-500 flex items-center gap-1.5 min-w-0">
+                    <Store className="w-4 h-4 text-[#10B981] shrink-0" />
+                    <span className="truncate">{currentBazar ? (currentBazar.nameBn || currentBazar.name) : 'আপনার এলাকা'} এর বাজার দর</span>
                   </p>
                   {currentBazar && userLocation && (
-                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
                       <Navigation className="w-3 h-3" />
                       {formatDistance(distanceKm(userLocation.lat, userLocation.lng, currentBazar.lat, currentBazar.lng))} দূরে
                     </span>
                   )}
                 </div>
               </div>
+
               <Link href="/heatmap"
-                className="inline-flex items-center justify-between bg-[#064E3B] text-white px-5 py-3.5 rounded-2xl font-medium shadow-[0_8px_16px_rgba(6,78,59,0.2)] hover:bg-[#043d2e] transition-colors active:scale-[0.98] lg:shrink-0">
-                <span>আশেপাশের দাম</span>
-                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center ml-3">
-                  <ArrowRight className="w-4 h-4" strokeWidth={2} />
-                </div>
+                className="flex items-center justify-center gap-3 w-full lg:w-auto bg-[#064E3B] text-white px-5 py-3.5 rounded-2xl font-bold text-sm shadow-[0_8px_16px_rgba(6,78,59,0.2)] active:scale-[0.98] transition-all lg:shrink-0">
+                <span>আশেপাশের দাম দেখুন</span>
+                <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
               </Link>
             </div>
           </div>
 
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" strokeWidth={1.5} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.5} />
             <input type="text" placeholder="পণ্য খুঁজুন..." value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-12 pl-12 pr-4 glass-card focus:outline-none focus:ring-2 focus:ring-[#10B981]/30 text-sm transition-shadow" />
+              className="w-full h-11 pl-11 pr-4 glass-card focus:outline-none focus:ring-2 focus:ring-[#10B981]/30 text-sm transition-shadow" />
           </div>
 
           {/* ── PRODUCTS VIEW ── */}
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-[#064E3B]">
+            <h3 className="text-base font-bold text-[#064E3B]">
               {searchQuery ? 'অনুসন্ধানের ফলাফল' : currentBazar ? `${currentBazar.nameBn || currentBazar.name} এর পণ্য` : 'সাম্প্রতিক দাম'}
             </h3>
+            {filteredProducts.length > 0 && (
+              <Link href={`/products${selectedBazarId ? `?bazar_id=${selectedBazarId}` : ''}`}
+                className="text-xs font-bold text-emerald-600 flex items-center gap-0.5">
+                সব দেখুন <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            )}
           </div>
 
           {loadingProducts ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className={`bg-white/60 border border-slate-100 rounded-[16px] p-3 min-h-[110px] animate-pulse${i >= 6 ? ' hidden md:block' : ''}`}>
-                  <div className="h-4 bg-slate-100 rounded mb-2 w-2/3" />
-                  <div className="h-3 bg-slate-100 rounded mb-4 w-1/3" />
-                  <div className="h-6 bg-slate-100 rounded w-1/2" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white/60 border border-slate-100 rounded-2xl p-3 min-h-[100px] animate-pulse">
+                  <div className="h-3.5 bg-slate-100 rounded mb-2 w-3/4" />
+                  <div className="h-3 bg-slate-100 rounded mb-3 w-1/3" />
+                  <div className="h-5 bg-slate-100 rounded w-1/2 mt-auto" />
                 </div>
               ))}
             </div>
           ) : filteredProducts.length === 0 ? (
-            <div className="text-center py-12 text-slate-400">
-              <p className="text-4xl mb-2">🛒</p>
-              <p className="font-medium">{selectedBazarId ? 'এই বাজারে এখনো কোনো দাম সাবমিট হয়নি' : 'গত ৭ দিনে কোনো দাম সাবমিট হয়নি'}</p>
+            <div className="text-center py-10 text-slate-400">
+              <p className="text-3xl mb-2">🛒</p>
+              <p className="text-sm font-medium">{selectedBazarId ? 'এই বাজারে এখনো কোনো দাম সাবমিট হয়নি' : 'গত ৭ দিনে কোনো দাম সাবমিট হয়নি'}</p>
             </div>
           ) : (
-            <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {filteredProducts.slice(0, 8).map((product: any, idx: number) => (
-                  <div key={`${product._id}-${idx}`}
-                    className={`backdrop-blur-md border border-[rgba(15,23,42,0.05)] bg-[rgba(255,255,255,0.85)] rounded-[16px] p-[12px] flex flex-col justify-between min-h-[110px] relative cursor-pointer transition-transform hover:-translate-y-1${idx >= 6 ? ' hidden md:flex' : ''}`}
-                    onClick={() => handleProductClick(product)}>
-                    <div className="flex justify-between items-start">
-                      <div className="pr-1 flex-1 min-w-0">
-                        <h4 className="text-[14px] font-bold text-[#0F172A] m-0 leading-[1.2] truncate">{product.nameBn || product.name}</h4>
-                        <p className="text-[11px] text-[#64748B] mt-[2px]">{product.unit}</p>
-                        {!selectedBazarId && product.bazarName && (
-                          <p className="text-[10px] text-emerald-600 font-semibold mt-0.5 truncate">🏪 {product.bazarName}</p>
-                        )}
-                      </div>
-                      <div className="w-[40px] h-[40px] bg-[#F1F5F9] rounded-[8px] flex items-center justify-center text-2xl shrink-0 ml-1">
-                        {product.icon || '🛒'}
-                      </div>
-                    </div>
-                    <div className="mt-auto pt-2 flex items-end justify-between gap-1">
-                      <div className="flex items-center gap-1">
-                        <span className="text-[18px] font-[800] tracking-[-0.5px] text-[#064E3B]">
-                          ৳ {product.bazarPrice ?? product.defaultPrice}
-                        </span>
-                        {isVerifiedPrice(product.priceEntry) && (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" strokeWidth={2.5} />
-                        )}
-                      </div>
-                      {product.submittedAt && (
-                        <span className="text-[10px] text-slate-400 font-medium shrink-0">{timeAgo(product.submittedAt)}</span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+              {filteredProducts.slice(0, 8).map((product: any, idx: number) => (
+                <div key={`${product._id}-${idx}`}
+                  className="bg-white/85 border border-slate-100/80 rounded-2xl p-3 flex flex-col justify-between min-h-[100px] cursor-pointer active:scale-[0.97] transition-transform shadow-sm"
+                  onClick={() => handleProductClick(product)}>
+                  <div className="flex justify-between items-start gap-1">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-[13px] font-bold text-slate-900 leading-tight truncate">{product.nameBn || product.name}</h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{product.unit}</p>
+                      {!selectedBazarId && product.bazarName && (
+                        <p className="text-[10px] text-emerald-600 font-semibold mt-0.5 truncate">🏪 {product.bazarName}</p>
                       )}
                     </div>
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 bg-slate-50 rounded-lg flex items-center justify-center text-xl shrink-0">
+                      {product.icon || '🛒'}
+                    </div>
                   </div>
-                ))}
-              </div>
-              {filteredProducts.length > 6 && (
-                <Link href={`/products${selectedBazarId ? `?bazar_id=${selectedBazarId}` : ''}`}
-                  className="w-full flex items-center justify-center gap-2 bg-white border border-slate-100 text-[#064E3B] font-bold py-3.5 rounded-2xl shadow-sm hover:bg-emerald-50 transition-colors mt-1">
-                  সব দেখুন ({filteredProducts.length})
-                  <ChevronRight className="w-4 h-4" />
-                </Link>
-              )}
-            </>
+                  <div className="mt-2 flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1 min-w-0">
+                      <span className="text-base font-black text-[#064E3B] tracking-tight">
+                        ৳{product.bazarPrice ?? product.defaultPrice}
+                      </span>
+                      {isVerifiedPrice(product.priceEntry) && (
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" strokeWidth={2.5} />
+                      )}
+                    </div>
+                    {product.submittedAt && (
+                      <span className="text-[9px] text-slate-400 font-medium shrink-0 hidden xs:block">{timeAgo(product.submittedAt)}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
 
         </div>
