@@ -104,10 +104,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
             'lg:justify-start lg:px-6 lg:py-6',
           )}>
             <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 shadow-lg shadow-emerald-900/20">
-              <Image src="/images/logo.png" alt="বাজার দর" width={40} height={40} className="w-full h-full object-cover" />
+              <Image src="/images/logo.png" alt="নায্যমূল্য" width={40} height={40} className="w-full h-full object-cover" />
             </div>
             <span className="hidden lg:block font-bold text-xl text-[#064E3B] tracking-tight whitespace-nowrap">
-              বাজার দর
+              নায্যমূল্য
             </span>
           </div>
 
@@ -232,9 +232,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {/* Mobile-only logo */}
             <div className="flex items-center gap-2 md:hidden">
               <div className="w-9 h-9 rounded-full overflow-hidden shadow-lg shadow-emerald-900/20">
-                <Image src="/images/logo.png" alt="বাজার দর" width={36} height={36} className="w-full h-full object-cover" />
+                <Image src="/images/logo.png" alt="নায্যমূল্য" width={36} height={36} className="w-full h-full object-cover" />
               </div>
-              <span className="font-bold text-lg text-[#064E3B] tracking-tight">বাজার দর</span>
+              <span className="font-bold text-lg text-[#064E3B] tracking-tight">নায্যমূল্য</span>
             </div>
             {/* Spacer on tablet+ */}
             <div className="hidden md:block" />
@@ -343,7 +343,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <div className="flex gap-3 items-start">
                 <div className="mt-0.5 w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-600 text-xs font-bold">💡</div>
                 <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                  আমাদের মূল উদ্দেশ্য আপনাকে বাজার দর সম্পর্কে একটি সঠিক ধারণা দেওয়া।
+                  আমাদের মূল উদ্দেশ্য আপনাকে নায্যমূল্য সম্পর্কে একটি সঠিক ধারণা দেওয়া।
                 </p>
               </div>
             </div>

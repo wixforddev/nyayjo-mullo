@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useLoginMutation } from '../../store/api/authApi';
 import { setCredentials } from '../../store/slices/authSlice';
 import { useAppDispatch } from '../../store/hooks';
-import { Activity, Eye, EyeOff } from 'lucide-react';
+import Image from 'next/image';
+import { Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -42,10 +43,10 @@ export default function LoginPage() {
 
       <div className="relative z-10 w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#064E3B] to-[#10B981] flex items-center justify-center shadow-lg shadow-emerald-900/20 mx-auto mb-4">
-            <Activity className="w-8 h-8 text-white" strokeWidth={2} />
+          <div className="w-20 h-20 rounded-full overflow-hidden shadow-lg shadow-emerald-900/20 mx-auto mb-4">
+            <Image src="/images/logo.png" alt="নায্যমূল্য" width={80} height={80} className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-2xl font-bold text-[#064E3B]">বাজার দর</h1>
+          <h1 className="text-2xl font-bold text-[#064E3B]">নায্যমূল্য</h1>
           <p className="text-sm text-slate-500 mt-1">আপনার অ্যাকাউন্টে লগইন করুন</p>
         </div>
 

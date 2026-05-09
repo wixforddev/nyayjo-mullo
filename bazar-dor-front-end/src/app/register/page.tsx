@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRegisterMutation, useVerifyEmailMutation } from '../../store/api/authApi';
-import { Activity, Eye, EyeOff, MapPin, Loader2 } from 'lucide-react';
+import Image from 'next/image';
+import { Eye, EyeOff, MapPin, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function RegisterPage() {
@@ -99,10 +100,10 @@ export default function RegisterPage() {
       <div className="relative z-10 w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-6">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#064E3B] to-[#10B981] flex items-center justify-center shadow-lg shadow-emerald-900/20 mx-auto mb-4">
-            <Activity className="w-8 h-8 text-white" strokeWidth={2} />
+          <div className="w-20 h-20 rounded-full overflow-hidden shadow-lg shadow-emerald-900/20 mx-auto mb-4">
+            <Image src="/images/logo.png" alt="নায্যমূল্য" width={80} height={80} className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-2xl font-bold text-[#064E3B]">বাজার দর</h1>
+          <h1 className="text-2xl font-bold text-[#064E3B]">নায্যমূল্য</h1>
           <p className="text-sm text-slate-500 mt-1">
             {step === 'register' ? 'নতুন অ্যাকাউন্ট তৈরি করুন' : 'ইমেইল ভেরিফাই করুন'}
           </p>

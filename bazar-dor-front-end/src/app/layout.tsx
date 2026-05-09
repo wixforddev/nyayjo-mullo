@@ -3,7 +3,7 @@ import './globals.css';
 import { Providers } from '../components/Providers';
 
 export const metadata: Metadata = {
-  title: 'বাজার দর - Bazar Dor',
+  title: 'নায্যমূল্য - Nayjjo Mullo',
   description: 'Real-time market price tracking app for Bangladesh',
 };
 
