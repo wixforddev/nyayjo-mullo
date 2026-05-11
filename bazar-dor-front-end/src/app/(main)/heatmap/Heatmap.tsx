@@ -103,10 +103,10 @@ export function Heatmap() {
   const selectedBazar = rawBazars.find((b: any) => b._id === selectedBazarId);
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-96px)] min-h-[600px]">
+    <div className="flex flex-col lg:flex-row gap-4 lg:h-[calc(100vh-96px)] lg:min-h-[600px]">
 
       {/* ── Left: Map ───────────────────────────────────────── */}
-      <div className="relative flex-1 min-h-[50vw] lg:min-h-0 rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-slate-100">
+      <div className="relative h-[58vh] lg:h-auto lg:flex-1 rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-slate-100">
 
         {/* Product filter (floating) */}
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[400] flex items-center gap-2
@@ -171,7 +171,8 @@ export function Heatmap() {
 
       {/* ── Right: Rankings panel ────────────────────────────── */}
       <div className="lg:w-80 xl:w-96 flex-shrink-0 flex flex-col bg-white/80 backdrop-blur-xl
-                      rounded-2xl shadow-sm border border-slate-100/80 overflow-hidden">
+                      rounded-2xl shadow-sm border border-slate-100/80 overflow-hidden
+                      max-h-[70vh] lg:max-h-none">
 
         {/* Panel header */}
         <div className="p-4 border-b border-slate-100 shrink-0">

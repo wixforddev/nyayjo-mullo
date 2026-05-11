@@ -5,7 +5,7 @@ import { ArrowLeft, Search, MapPin, ChevronRight, CheckCircle2, X } from 'lucide
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts';
-import { useGetBazarsQuery } from '../../../store/api/bazarApi';
+import { useGetBazarsQuery, useGetNearbyBazarsQuery } from '../../../store/api/bazarApi';
 import { useGetPricesQuery, useVotePriceMutation, useMarkStockOutMutation, useGetPriceHistoryQuery } from '../../../store/api/priceApi';
 import { useAppSelector } from '../../../store/hooks';
 import { useUserLocation } from '../../../hooks/useUserLocation';
@@ -44,9 +44,15 @@ export function AllProducts() {
   };
 
   const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-  const NEARBY_KM = 10;
+  const { data: bazarsRes,      isLoading: loadingBazars1 } = useGetBazarsQuery(
+    { limit: 50 }, { skip: !!userLocation },
+  );
+  const { data: nearbyBazarsRes, isLoading: loadingBazars2 } = useGetNearbyBazarsQuery(
+    { lat: userLocation?.lat ?? 0, lng: userLocation?.lng ?? 0, radius: 10, limit: 50 },
+    { skip: !userLocation },
+  );
+  const loadingBazars = loadingBazars1 || loadingBazars2;
 
-  const { data: bazarsRes, isLoading: loadingBazars } = useGetBazarsQuery({ limit: 50 });
   const { data: pricesRes, isFetching: loadingBazarPrices } = useGetPricesQuery(
     { bazarId: selectedBazarId, limit: 200 },
     { skip: !selectedBazarId }
@@ -67,12 +73,13 @@ export function AllProducts() {
   const [votePrice] = useVotePriceMutation();
   const [markStockOut] = useMarkStockOutMutation();
 
-  const bazars = bazarsRes?.data?.attributes?.data || [];
+  const bazars = userLocation
+    ? (nearbyBazarsRes?.data?.attributes || [])
+    : (bazarsRes?.data?.attributes?.data || []);
   const prices = pricesRes?.data?.attributes?.data || [];
 
-  const nearbyBazarIds = userLocation
-    ? new Set(bazars.filter((b: any) => b.lat && b.lng && distanceKm(userLocation.lat, userLocation.lng, b.lat, b.lng) <= NEARBY_KM).map((b: any) => b._id))
-    : null;
+  // nearby API already limits to 10km radius — all returned bazars qualify as nearby
+  const nearbyBazarIds = userLocation ? new Set(bazars.map((b: any) => b._id)) : null;
 
   const recentAllPrices = (recentPricesRes?.data?.attributes?.data || []).filter((p: any) => {
     if (Date.now() - new Date(p.createdAt).getTime() >= SEVEN_DAYS) return false;
