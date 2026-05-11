@@ -3,10 +3,11 @@ import { Layout } from '@/components/Layout';
 import { ProductDetail } from './ProductDetail';
 
 interface PageProps {
-  params: { productId: string };
+  params: Promise<{ productId: string }>;
 }
 
-export default function ProductDetailPage({ params }: PageProps) {
+export default async function ProductDetailPage({ params }: PageProps) {
+  const { productId } = await params;
   return (
     <Layout>
       <Suspense fallback={
@@ -17,7 +18,7 @@ export default function ProductDetailPage({ params }: PageProps) {
           <div className="h-48 bg-slate-100 rounded-3xl" />
         </div>
       }>
-        <ProductDetail productId={params.productId} />
+        <ProductDetail productId={productId} />
       </Suspense>
     </Layout>
   );
