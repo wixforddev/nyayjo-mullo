@@ -149,6 +149,7 @@ const getLeaderboard = catchAsync(async (req: Request, res: Response) => {
         totalSubmissions: 1,
         verifiedSubmissions: 1,
         location: '$user.location',
+        memberSince: '$user.createdAt',
       },
     },
   ]);
