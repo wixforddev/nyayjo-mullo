@@ -65,7 +65,6 @@ export function Profile() {
   const router   = useRouter();
   const dispatch = useAppDispatch();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [showLeaderboard,   setShowLeaderboard]   = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showAddExpense,    setShowAddExpense]    = useState(false);
   const [expenseInput,      setExpenseInput]      = useState('');
@@ -149,17 +148,6 @@ export function Profile() {
     setShowAddExpense(false);
   };
 
-  // ── Leaderboard: captain per division ────────────────────
-  const captainIds = new Set<string>();
-  const divisionTop: Record<string, string> = {};
-  leaderboard.forEach((u: any) => {
-    if (!u.location?.lat) return;
-    const div = getDivision(u.location.lat, u.location.lng);
-    if (!divisionTop[div]) {
-      divisionTop[div] = u.userId || u._id || u.name;
-      captainIds.add(u.userId || u._id || u.name);
-    }
-  });
 
   const handleLogout = () => {
     dispatch(logout());
@@ -310,7 +298,7 @@ export function Profile() {
       </div>
 
       {/* Leaderboard rank row */}
-      <button onClick={() => setShowLeaderboard(true)}
+      <button onClick={() => router.push('/ranking')}
         className="bg-white rounded-[24px] p-4 border border-slate-100 shadow-sm flex items-center justify-between w-full text-left hover:bg-slate-50 transition">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center shrink-0">
@@ -399,52 +387,6 @@ export function Profile() {
         </div>
       )}
 
-      {/* ── Leaderboard Modal ── */}
-      {showLeaderboard && (
-        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-slate-900/30 backdrop-blur-sm animate-in fade-in duration-300 pb-20 lg:pb-0">
-          <div className="absolute inset-0" onClick={() => setShowLeaderboard(false)} />
-          <div className="w-full lg:max-w-lg max-h-[85vh] bg-[#FAFCFC] rounded-t-[32px] lg:rounded-[32px] shadow-2xl relative z-10 flex flex-col animate-in slide-in-from-bottom-full lg:zoom-in-95 duration-300">
-            <div className="flex items-center justify-between p-5 border-b border-slate-100 shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-slate-800">🏆 শীর্ষ অবদানকারী</h2>
-                <p className="text-xs text-slate-400 mt-0.5">ভেরিফাইড দামের ভিত্তিতে</p>
-              </div>
-              <button onClick={() => setShowLeaderboard(false)} className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="overflow-y-auto p-4 space-y-2">
-              {leaderboard.map((u: any, i: number) => {
-                const uid        = u.userId || u._id || u.name;
-                const isCaptain  = captainIds.has(uid);
-                const division   = u.location?.lat ? getDivision(u.location.lat, u.location.lng) : null;
-                return (
-                  <div key={i}
-                    className={`flex items-center gap-3 p-3 rounded-2xl border ${isMe(u) ? 'bg-emerald-50 border-emerald-100' : i === 0 ? 'bg-amber-50 border-amber-100' : 'bg-white border-slate-50'}`}>
-                    <span className="text-base font-black w-7 text-center shrink-0 text-slate-500">
-                      {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="font-bold text-slate-700 truncate">{u.name || 'ব্যবহারকারী'}</p>
-                        {isMe(u) && <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full shrink-0">আপনি</span>}
-                        {isCaptain && <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full shrink-0">⚔️ ক্যাপ্টেন</span>}
-                      </div>
-                      <p className="text-xs text-slate-400">
-                        {division && `${division} · `}{u.verifiedSubmissions} ভেরিফাইড · {u.totalSubmissions} দাম
-                      </p>
-                    </div>
-                    <Medal className="w-4 h-4 text-amber-400 shrink-0" />
-                  </div>
-                );
-              })}
-              {leaderboard.length === 0 && (
-                <p className="text-center text-slate-400 py-8">এখনো কোনো ডেটা নেই</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Logout confirm */}
       {showLogoutConfirm && (

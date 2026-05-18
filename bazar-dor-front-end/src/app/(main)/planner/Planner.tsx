@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { MapPin, Minus, Plus, ChevronRight, Search, Car, ArrowRight, TrendingDown, CheckCircle2, AlertTriangle, Navigation } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { MapPin, Minus, Plus, ChevronRight, Search, Car, ArrowRight, TrendingDown, CheckCircle2, AlertTriangle, Navigation, X } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { FoodRescue } from '@/components/FoodRescue';
 import { useGetBazarsQuery, useGetNearbyBazarsQuery } from '../../../store/api/bazarApi';
@@ -26,7 +26,9 @@ export function Planner() {
   const [selectedProducts, setSelectedProducts] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery]           = useState('');
   const [bazarSearch, setBazarSearch]           = useState('');
+  const [bazarDropdownOpen, setBazarDropdownOpen] = useState(false);
   const [selectedBazarId, setSelectedBazarId]   = useState('');
+  const bazarRef = useRef<HTMLDivElement>(null);
   const [travelCost, setTravelCost]             = useState('');
 
   const { location: userLocation } = useUserLocation();
@@ -54,8 +56,12 @@ export function Planner() {
     ? (nearbyBazarsRes?.data?.attributes || [])
     : (bazarsRes?.data?.attributes?.data || []);
 
-  // Dropdown options: when location available, additionally filter by bazarSearch client-side
-  const bazarOptions = userLocation && bazarSearch
+  // Autocomplete options: filter by typed text, but show all when search matches selected bazar name
+  const selectedBazarName = selectedBazarId
+    ? (bazars.find((b: any) => b._id === selectedBazarId)?.nameBn ||
+       bazars.find((b: any) => b._id === selectedBazarId)?.name || '')
+    : '';
+  const bazarOptions = bazarSearch && bazarSearch !== selectedBazarName
     ? bazars.filter((b: any) =>
         b.name?.toLowerCase().includes(bazarSearch.toLowerCase()) ||
         b.nameBn?.includes(bazarSearch) ||
@@ -67,6 +73,14 @@ export function Planner() {
     const saved = localStorage.getItem('defaultBazarId');
     if (saved) setSelectedBazarId(saved);
   }, []);
+
+  // When bazars load, populate search field with selected bazar name
+  useEffect(() => {
+    if (selectedBazarId && !bazarSearch && bazars.length > 0) {
+      const b = bazars.find((b: any) => b._id === selectedBazarId);
+      if (b) setBazarSearch(b.nameBn || b.name || '');
+    }
+  }, [bazars, selectedBazarId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -213,6 +227,16 @@ export function Planner() {
   const selectBazar = (bid: string) => {
     setSelectedBazarId(bid);
     localStorage.setItem('defaultBazarId', bid);
+    const b = bazars.find((b: any) => b._id === bid);
+    if (b) setBazarSearch(b.nameBn || b.name || '');
+    setBazarDropdownOpen(false);
+  };
+
+  const clearBazar = () => {
+    setSelectedBazarId('');
+    setBazarSearch('');
+    setBazarDropdownOpen(false);
+    localStorage.removeItem('defaultBazarId');
   };
 
   const handleCalculate = () => {
@@ -253,7 +277,7 @@ export function Planner() {
   const selectedCount = Object.keys(selectedProducts).length;
 
   return (
-    <div className="flex flex-col gap-3 sm:gap-5 pb-24 md:pb-6 overflow-x-hidden w-full">
+    <div className="flex flex-col gap-3 sm:gap-5 pb-24 md:pb-6  w-full">
 
       {/* ── Header & Tabs ── */}
       <div className="glass-card p-4 sm:p-6 text-center flex flex-col gap-3 sm:gap-5">
@@ -283,7 +307,7 @@ export function Planner() {
           <div className="flex flex-col gap-3 lg:hidden">
 
             {/* Info card */}
-            <div className="glass-card overflow-hidden">
+            <div className={`glass-card relative${bazarDropdownOpen ? ' z-20' : ''}`}>
               <div className="px-4 pt-4 pb-3 border-b border-slate-100">
                 <h2 className="text-sm font-bold text-[#064E3B]">প্রাথমিক তথ্য</h2>
               </div>
@@ -300,31 +324,52 @@ export function Planner() {
                     </span>
                   )}
                 </div>
-                {/* Bazar search input */}
-                <div className="relative mb-1.5">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="বাজার খুঁজুন..."
-                    value={bazarSearch}
-                    onChange={e => setBazarSearch(e.target.value)}
-                    className="w-full h-9 pl-8 pr-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-300/30 focus:bg-white transition-colors"
-                  />
-                </div>
-                {loadingBazars ? (
-                  <div className="h-11 bg-slate-100 rounded-xl animate-pulse" />
-                ) : (
+                {/* Bazar autocomplete */}
+                <div className="relative" ref={bazarRef}>
                   <div className="relative">
-                    <select value={selectedBazarId} onChange={e => selectBazar(e.target.value)}
-                      className="w-full h-11 px-3 pr-8 rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-300/40 appearance-none text-sm font-medium">
-                      <option value="">সব বাজার</option>
-                      {bazarOptions.map((b: any) => (
-                        <option key={b._id} value={b._id}>{b.nameBn || b.name}</option>
-                      ))}
-                    </select>
-                    <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 rotate-90 pointer-events-none" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="বাজার খুঁজুন বা বেছে নিন..."
+                      value={bazarSearch}
+                      onChange={e => { setBazarSearch(e.target.value); setBazarDropdownOpen(true); if (selectedBazarId) setSelectedBazarId(''); }}
+                      onFocus={() => setBazarDropdownOpen(true)}
+                      onBlur={() => setTimeout(() => setBazarDropdownOpen(false), 150)}
+                      className={`w-full h-10 pl-8 pr-8 rounded-xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-300/30 transition-colors ${selectedBazarId ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-slate-50 focus:bg-white'}`}
+                    />
+                    {selectedBazarId ? (
+                      <button onMouseDown={clearBazar} className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 hover:text-emerald-700">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    ) : loadingBazars ? (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 rotate-90 pointer-events-none" />
+                    )}
                   </div>
-                )}
+                  {bazarDropdownOpen && bazarOptions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden max-h-52 overflow-y-auto">
+                      {bazarOptions.slice(0, 20).map((b: any) => {
+                        const dist = userLocation && b.lat && b.lng ? distanceKm(userLocation.lat, userLocation.lng, b.lat, b.lng) : null;
+                        return (
+                          <button key={b._id} onMouseDown={() => selectBazar(b._id)}
+                            className={`w-full flex items-center gap-2 px-3 py-2.5 text-left border-b border-slate-100 last:border-0 transition-colors ${b._id === selectedBazarId ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
+                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-slate-700 truncate">{b.nameBn || b.name}</p>
+                              {b.area && <p className="text-[10px] text-slate-400 truncate">{b.area}</p>}
+                            </div>
+                            {dist !== null && (
+                              <span className="text-[10px] font-bold text-emerald-600 shrink-0">
+                                {dist < 1 ? `${Math.round(dist * 1000)}মি` : `${dist.toFixed(1)}কিমি`}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Travel cost */}
@@ -483,31 +528,50 @@ export function Planner() {
                     </span>
                   )}
                 </div>
-                {/* Bazar search */}
-                <div className="relative mb-2">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="বাজার খুঁজুন..."
-                    value={bazarSearch}
-                    onChange={e => setBazarSearch(e.target.value)}
-                    className="w-full h-9 pl-9 pr-3 rounded-xl border border-slate-200 bg-slate-50/80 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-300/30 focus:bg-white transition-colors"
-                  />
-                </div>
+                {/* Bazar autocomplete — desktop */}
                 <div className="relative">
-                  {loadingBazars ? (
-                    <div className="h-12 bg-slate-100 rounded-xl animate-pulse" />
-                  ) : (
-                    <>
-                      <select value={selectedBazarId} onChange={e => selectBazar(e.target.value)}
-                        className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white/50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-300/30 appearance-none text-sm">
-                        <option value="">বাজার বেছে নিন</option>
-                        {bazarOptions.map((b: any) => (
-                          <option key={b._id} value={b._id}>{b.nameBn || b.name}</option>
-                        ))}
-                      </select>
-                      <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 rotate-90 pointer-events-none" />
-                    </>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="বাজার খুঁজুন বা বেছে নিন..."
+                      value={bazarSearch}
+                      onChange={e => { setBazarSearch(e.target.value); setBazarDropdownOpen(true); if (selectedBazarId) setSelectedBazarId(''); }}
+                      onFocus={() => setBazarDropdownOpen(true)}
+                      onBlur={() => setTimeout(() => setBazarDropdownOpen(false), 150)}
+                      className={`w-full h-12 pl-10 pr-10 rounded-xl border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-300/30 transition-colors ${selectedBazarId ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white/50 focus:bg-white'}`}
+                    />
+                    {selectedBazarId ? (
+                      <button onMouseDown={clearBazar} className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 hover:text-emerald-700">
+                        <X className="w-4 h-4" />
+                      </button>
+                    ) : loadingBazars ? (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 rotate-90 pointer-events-none" />
+                    )}
+                  </div>
+                  {bazarDropdownOpen && bazarOptions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden max-h-56 overflow-y-auto">
+                      {bazarOptions.slice(0, 20).map((b: any) => {
+                        const dist = userLocation && b.lat && b.lng ? distanceKm(userLocation.lat, userLocation.lng, b.lat, b.lng) : null;
+                        return (
+                          <button key={b._id} onMouseDown={() => selectBazar(b._id)}
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-left border-b border-slate-100 last:border-0 transition-colors ${b._id === selectedBazarId ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
+                            <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-slate-700 truncate">{b.nameBn || b.name}</p>
+                              {b.area && <p className="text-xs text-slate-400 truncate">{b.area}</p>}
+                            </div>
+                            {dist !== null && (
+                              <span className="text-xs font-bold text-emerald-600 shrink-0">
+                                {dist < 1 ? `${Math.round(dist * 1000)}মি` : `${dist.toFixed(1)}কিমি`}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               </div>
